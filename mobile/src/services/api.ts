@@ -1,9 +1,9 @@
 import { ToneType, Note, User, ApiResponse, TranscriptionResponse, RephrasingResponse } from '../types';
 
-// Configure base URL - use your computer's local IP for phone testing
+// Configure base URL
 const API_BASE_URL = __DEV__
-  ? 'http://192.168.1.158:3000'  // Your computer's IP
-  : 'https://your-production-api.com';
+  ? 'http://192.168.1.158:3000'  // Local dev server
+  : 'https://voicenote-pro.onrender.com';  // Production server
 
 class ApiService {
   private token: string | null = null;
