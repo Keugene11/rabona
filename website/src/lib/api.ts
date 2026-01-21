@@ -23,22 +23,55 @@ export interface TranscribeResponse {
 
 export async function transcribeAudio(
   audioBlob: Blob,
-  token: string,
-  tone: string = 'professional'
+  token?: string | null
 ): Promise<TranscribeResponse> {
   const formData = new FormData();
   formData.append('audio', audioBlob, 'recording.webm');
-  formData.append('tone', tone);
+  formData.append('tone', 'professional'); // AI auto-adapts based on content
 
-  const response = await fetch(`${API_URL}/api/transcribe`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
-  return response.json();
+  try {
+    // Use /process endpoint for transcription + rephrasing
+    const response = await fetch(`${API_URL}/api/transcribe/process`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || `Server error: ${response.status}`,
+      };
+    }
+
+    const result = await response.json();
+
+    // Transform response to match our interface
+    if (result.success && result.data) {
+      return {
+        success: true,
+        data: {
+          originalText: result.data.transcription?.text || '',
+          processedText: result.data.rephrasing?.rephrasedText || '',
+          tone: result.data.rephrasing?.tone || 'professional',
+          duration: result.data.transcription?.duration || 0,
+        },
+      };
+    }
+
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to connect to server. Please try again.',
+    };
+  }
 }
 
 export async function getNotes(token: string): Promise<Note[]> {

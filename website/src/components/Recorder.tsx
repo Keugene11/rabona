@@ -1,23 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Mic, Square, Pause, Play, Loader2, Check } from 'lucide-react';
+import { Mic, Square, Loader2, Copy, Check, RotateCcw } from 'lucide-react';
 import { useRecorder } from '@/hooks/useRecorder';
 import { transcribeAudio } from '@/lib/api';
 
 interface RecorderProps {
-  token: string;
+  token?: string | null;
   onNoteCreated?: () => void;
 }
-
-const TONES = [
-  { value: 'professional', label: 'Professional', emoji: '💼' },
-  { value: 'casual', label: 'Casual', emoji: '😎' },
-  { value: 'concise', label: 'Concise', emoji: '📝' },
-  { value: 'email', label: 'Email', emoji: '📧' },
-  { value: 'meeting_notes', label: 'Meeting Notes', emoji: '📋' },
-  { value: 'original', label: 'Original', emoji: '🎤' },
-];
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -28,19 +19,16 @@ function formatDuration(seconds: number): string {
 export function Recorder({ token, onNoteCreated }: RecorderProps) {
   const {
     isRecording,
-    isPaused,
     duration,
     startRecording,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     resetRecording,
   } = useRecorder();
 
-  const [selectedTone, setSelectedTone] = useState('professional');
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<{ original: string; processed: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleStartRecording = async () => {
     setError(null);
@@ -60,7 +48,7 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
     setError(null);
 
     try {
-      const response = await transcribeAudio(blob, token, selectedTone);
+      const response = await transcribeAudio(blob, token);
       if (response.success && response.data) {
         setResult({
           original: response.data.originalText,
@@ -80,144 +68,107 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
   const handleNewRecording = () => {
     setResult(null);
     setError(null);
+    setCopied(false);
     resetRecording();
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
+  // Show result view
   if (result) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Your Note</h2>
-          <button
-            onClick={handleNewRecording}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors"
-          >
-            New Recording
-          </button>
+        {/* Enhanced Result */}
+        <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-2xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              ✨ Your Enhanced Note
+            </h3>
+            <button
+              onClick={() => copyToClipboard(result.processed)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm text-white transition-colors"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-white text-lg leading-relaxed whitespace-pre-wrap">{result.processed}</p>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-gray-800 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-400">Original Transcription</h3>
-              <button
-                onClick={() => copyToClipboard(result.original)}
-                className="text-xs text-purple-400 hover:text-purple-300"
-              >
-                Copy
-              </button>
-            </div>
-            <p className="text-gray-300 text-sm">{result.original}</p>
-          </div>
+        {/* Original (collapsed) */}
+        <details className="bg-gray-800/50 rounded-xl">
+          <summary className="px-4 py-3 cursor-pointer text-gray-400 text-sm hover:text-gray-300">
+            View original transcription
+          </summary>
+          <p className="px-4 pb-4 text-gray-400 text-sm">{result.original}</p>
+        </details>
 
-          <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-xl p-4 border border-purple-500/30">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-purple-300">
-                ✨ Enhanced ({TONES.find(t => t.value === selectedTone)?.label})
-              </h3>
-              <button
-                onClick={() => copyToClipboard(result.processed)}
-                className="text-xs text-purple-400 hover:text-purple-300"
-              >
-                Copy
-              </button>
-            </div>
-            <p className="text-white whitespace-pre-wrap">{result.processed}</p>
-          </div>
-        </div>
+        {/* New Recording Button */}
+        <button
+          onClick={handleNewRecording}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-white font-medium transition-colors"
+        >
+          <RotateCcw className="w-5 h-5" />
+          Record Another
+        </button>
       </div>
     );
   }
 
+  // Recording view
   return (
-    <div className="space-y-8">
-      {/* Tone Selector */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-400 mb-3">Select Tone</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {TONES.map((tone) => (
-            <button
-              key={tone.value}
-              onClick={() => setSelectedTone(tone.value)}
-              disabled={isRecording}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                selectedTone === tone.value
-                  ? 'bg-purple-600 text-white ring-2 ring-purple-400'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {tone.emoji} {tone.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Recording Controls */}
-      <div className="flex flex-col items-center space-y-6">
-        {/* Duration Display */}
-        <div className="text-4xl font-mono text-white">
+    <div className="flex flex-col items-center space-y-8 py-8">
+      {/* Duration Display */}
+      {isRecording && (
+        <div className="text-5xl font-mono text-white tabular-nums">
           {formatDuration(duration)}
         </div>
+      )}
 
-        {/* Recording Button */}
-        <div className="flex items-center space-x-4">
-          {!isRecording && !isProcessing && (
-            <button
-              onClick={handleStartRecording}
-              className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 transition-all hover:scale-105"
-            >
-              <Mic className="w-8 h-8 text-white" />
-            </button>
-          )}
+      {/* Main Button */}
+      <div className="relative">
+        {!isRecording && !isProcessing && (
+          <button
+            onClick={handleStartRecording}
+            className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 flex items-center justify-center shadow-2xl shadow-purple-500/40 transition-all hover:scale-105 active:scale-95"
+          >
+            <Mic className="w-12 h-12 text-white" />
+          </button>
+        )}
 
-          {isRecording && (
-            <>
-              <button
-                onClick={isPaused ? resumeRecording : pauseRecording}
-                className="w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-all"
-              >
-                {isPaused ? (
-                  <Play className="w-6 h-6 text-white" />
-                ) : (
-                  <Pause className="w-6 h-6 text-white" />
-                )}
-              </button>
+        {isRecording && (
+          <button
+            onClick={handleStopRecording}
+            className="w-32 h-32 rounded-full bg-gradient-to-br from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 flex items-center justify-center shadow-2xl shadow-red-500/40 transition-all hover:scale-105 active:scale-95 animate-pulse"
+          >
+            <Square className="w-12 h-12 text-white" />
+          </button>
+        )}
 
-              <button
-                onClick={handleStopRecording}
-                className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/30 transition-all hover:scale-105 animate-pulse"
-              >
-                <Square className="w-8 h-8 text-white" />
-              </button>
-            </>
-          )}
-
-          {isProcessing && (
-            <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-            </div>
-          )}
-        </div>
-
-        {/* Status Text */}
-        <p className="text-gray-400 text-sm">
-          {!isRecording && !isProcessing && 'Tap to start recording'}
-          {isRecording && !isPaused && 'Recording... tap red button to stop'}
-          {isRecording && isPaused && 'Paused'}
-          {isProcessing && 'Processing your recording...'}
-        </p>
-
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
-            {error}
+        {isProcessing && (
+          <div className="w-32 h-32 rounded-full bg-gray-800 flex items-center justify-center">
+            <Loader2 className="w-12 h-12 text-purple-400 animate-spin" />
           </div>
         )}
       </div>
+
+      {/* Status Text */}
+      <p className="text-gray-400 text-lg">
+        {!isRecording && !isProcessing && 'Tap to record'}
+        {isRecording && 'Tap to stop'}
+        {isProcessing && 'Enhancing your note...'}
+      </p>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-6 py-4 text-red-400 text-center max-w-md">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
