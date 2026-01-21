@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,14 +15,14 @@ const router = Router();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req, file, cb: (error: Error | null, destination: string) => void) => {
     const uploadDir = path.join(__dirname, '../../uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
-  filename: (req, file, cb) => {
+  filename: (req, file, cb: (error: Error | null, filename: string) => void) => {
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
@@ -33,7 +33,7 @@ const upload = multer({
   limits: {
     fileSize: 25 * 1024 * 1024, // 25MB max
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req, file, cb: FileFilterCallback) => {
     const allowedTypes = [
       'audio/mpeg',
       'audio/mp3',

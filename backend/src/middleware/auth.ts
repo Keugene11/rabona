@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'development-secret';
 export interface AuthRequest extends Request {
   userId?: string;
   userEmail?: string;
+  file?: Express.Multer.File;
 }
 
 /**
