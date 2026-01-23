@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,226 @@ import {
   ScrollView,
   Alert,
   StatusBar,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
+import Constants from 'expo-constants';
+import { auth } from '../config/firebase';
 import { colors, spacing, typography, borderRadius, shadows } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
+import { useSubscriptionStore } from '../store/useSubscriptionStore';
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Check if running in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Conditionally import and configure Google Sign-In for native builds only
+let GoogleSignin: any = null;
+let isSuccessResponse: any = null;
+let isErrorWithCode: any = null;
+let statusCodes: any = null;
+
+if (!isExpoGo) {
+  const googleSignIn = require('@react-native-google-signin/google-signin');
+  GoogleSignin = googleSignIn.GoogleSignin;
+  isSuccessResponse = googleSignIn.isSuccessResponse;
+  isErrorWithCode = googleSignIn.isErrorWithCode;
+  statusCodes = googleSignIn.statusCodes;
+
+  GoogleSignin.configure({
+    webClientId: '873872579882-e7v3qb1rjjtcgqnuomoo6gdasd6shrdo.apps.googleusercontent.com',
+  });
+}
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, setLoading, isLoading, loginWithGoogle } = useAuthStore();
+  const { isProUser, freeRecordingsUsed, maxFreeRecordings } = useSubscriptionStore();
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // Google Sign-In with Expo Auth Session (for Expo Go)
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: '873872579882-e7v3qb1rjjtcgqnuomoo6gdasd6shrdo.apps.googleusercontent.com',
+    scopes: ['profile', 'email'],
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const accessToken = response.authentication?.accessToken;
+      if (accessToken) {
+        handleExpoGoogleSignIn(accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google auth error:', response.error);
+      Alert.alert('Error', 'Google sign-in failed');
+    }
+  }, [response]);
+
+  // Handle Expo Go web-based Google Sign-In
+  const handleExpoGoogleSignIn = async (accessToken: string) => {
+    setLoading(true);
+    try {
+      const userInfoResponse = await fetch(
+        'https://www.googleapis.com/userinfo/v2/me',
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const userInfo = await userInfoResponse.json();
+
+      if (userInfo.error) {
+        throw new Error(userInfo.error.message);
+      }
+
+      loginWithGoogle({
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name || userInfo.email?.split('@')[0] || 'User',
+      });
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Native Google Sign-In (for production builds)
+  const handleNativeGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+
+      if (isSuccessResponse(response)) {
+        const { idToken } = response.data;
+
+        if (idToken) {
+          // Sign in with Firebase using the Google ID token
+          const googleCredential = GoogleAuthProvider.credential(idToken);
+          const userCredential = await signInWithCredential(auth, googleCredential);
+          const firebaseUser = userCredential.user;
+
+          loginWithGoogle({
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          });
+        }
+      }
+    } catch (error: any) {
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            // User cancelled the sign-in
+            break;
+          case statusCodes.IN_PROGRESS:
+            Alert.alert('Error', 'Sign-in already in progress');
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Alert.alert('Error', 'Google Play Services not available');
+            break;
+          default:
+            console.error('Google sign-in error:', error);
+            Alert.alert('Error', 'Failed to sign in with Google');
+        }
+      } else {
+        console.error('Google sign-in error:', error);
+        Alert.alert('Error', 'Failed to sign in with Google');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Unified Google Sign-In handler
+  const handleGoogleSignIn = () => {
+    if (isExpoGo) {
+      promptAsync();
+    } else {
+      handleNativeGoogleSignIn();
+    }
+  };
+
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      setAuthError('Please enter email and password');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError('');
+
+    try {
+      let userCredential;
+      if (isSignUp) {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      }
+
+      const firebaseUser = userCredential.user;
+      loginWithGoogle({
+        id: firebaseUser.uid,
+        email: firebaseUser.email || email,
+        name: firebaseUser.displayName || email.split('@')[0],
+      });
+
+      setShowAuthModal(false);
+      setEmail('');
+      setPassword('');
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      let message = 'Authentication failed';
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'Email already in use. Try signing in instead.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'Invalid email address';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'Password should be at least 6 characters';
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        message = 'Invalid email or password';
+      } else if (error.code === 'auth/invalid-credential') {
+        message = 'Invalid email or password';
+      }
+      setAuthError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setAuthError('Enter your email to reset password');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert('Password Reset', 'Check your email for reset instructions');
+    } catch (error) {
+      setAuthError('Failed to send reset email');
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -87,9 +297,51 @@ export default function SettingsScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Subscription Section */}
+          <View style={styles.section}>
+            <View style={styles.usageCard}>
+              <View style={styles.usageHeader}>
+                <Text style={styles.usageTitle}>Subscription</Text>
+                <View style={[styles.usageBadge, isProUser && styles.proBadge]}>
+                  <Text style={styles.usageBadgeText}>
+                    {isProUser ? 'PRO' : 'FREE'}
+                  </Text>
+                </View>
+              </View>
+              {!isProUser && (
+                <>
+                  <View style={styles.usageBarContainer}>
+                    <View
+                      style={[
+                        styles.usageBar,
+                        { width: `${(freeRecordingsUsed / maxFreeRecordings) * 100}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.usageText}>
+                    {freeRecordingsUsed} of {maxFreeRecordings} free recordings used
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.upgradeButton}
+                    onPress={() => navigation.navigate('Paywall')}
+                  >
+                    <Ionicons name="diamond" size={16} color={colors.accent} />
+                    <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {isProUser && (
+                <Text style={styles.proText}>
+                  Unlimited recordings enabled
+                </Text>
+              )}
+            </View>
+          </View>
+
           {/* Account Section */}
           {isAuthenticated && user && (
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Account</Text>
               <View style={styles.profileCard}>
                 <LinearGradient
                   colors={[colors.primary, colors.primaryDark]}
@@ -103,41 +355,6 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={styles.profileEmail}>{user.email}</Text>
                 </View>
-                <TouchableOpacity style={styles.editButton}>
-                  <Ionicons name="pencil" size={16} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Usage Card */}
-              <View style={styles.usageCard}>
-                <View style={styles.usageHeader}>
-                  <Text style={styles.usageTitle}>Monthly Usage</Text>
-                  <View style={styles.usageBadge}>
-                    <Text style={styles.usageBadgeText}>
-                      {user.subscriptionTier === 'premium' ? 'PRO' : 'FREE'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.usageBarContainer}>
-                  <View
-                    style={[
-                      styles.usageBar,
-                      { width: `${(user.monthlyUsage / 10) * 100}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.usageText}>
-                  {user.monthlyUsage} of 10 recordings used
-                </Text>
-                {user.subscriptionTier !== 'premium' && (
-                  <TouchableOpacity
-                    style={styles.upgradeButton}
-                    onPress={() => Alert.alert('Coming Soon', 'Subscription management coming soon!')}
-                  >
-                    <Ionicons name="diamond" size={16} color={colors.accent} />
-                    <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
           )}
@@ -224,24 +441,115 @@ export default function SettingsScreen() {
               <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => navigation.navigate('Auth')}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.loginButtonGradient}
+            <View style={styles.authButtons}>
+              {/* Google Sign-In Button */}
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                disabled={isExpoGo ? (!request || isLoading) : isLoading}
+                activeOpacity={0.8}
               >
-                <Ionicons name="log-in-outline" size={20} color={colors.textOnPrimary} />
-                <Text style={styles.loginText}>Sign Up / Log In</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+                {isLoading ? (
+                  <ActivityIndicator color={colors.textPrimary} />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={20} color="#EA4335" />
+                    <Text style={styles.googleButtonText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* Email Sign-In Button */}
+              <TouchableOpacity
+                style={styles.emailButton}
+                onPress={() => setShowAuthModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="mail-outline" size={20} color={colors.textOnPrimary} />
+                <Text style={styles.emailButtonText}>Continue with Email</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Auth Modal */}
+      <Modal
+        visible={showAuthModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAuthModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {isSignUp ? 'Create Account' : 'Sign In'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowAuthModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.textLight}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            {authError ? (
+              <Text style={styles.errorText}>{authError}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.authButton}
+              onPress={handleEmailAuth}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.textOnPrimary} />
+              ) : (
+                <Text style={styles.authButtonText}>
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {!isSignUp && (
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <Text style={styles.forgotPassword}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+              <Text style={styles.switchAuth}>
+                {isSignUp
+                  ? 'Already have an account? Sign In'
+                  : "Don't have an account? Create One"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -328,14 +636,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   usageCard: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
@@ -364,6 +664,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.bold,
     color: colors.textOnPrimary,
     letterSpacing: 0.5,
+  },
+  proBadge: {
+    backgroundColor: colors.accent,
+  },
+  proText: {
+    fontSize: typography.body,
+    color: colors.success,
+    fontWeight: typography.medium,
+    marginTop: spacing.sm,
   },
   usageBarContainer: {
     height: 6,
@@ -448,24 +757,104 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: typography.medium,
   },
-  loginButton: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+  authButtons: {
+    gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  loginButtonGradient: {
+  googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: spacing.sm,
   },
-  loginText: {
+  googleButtonText: {
+    fontSize: typography.body,
+    color: colors.textPrimary,
+    fontWeight: typography.medium,
+  },
+  emailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  emailButtonText: {
     fontSize: typography.body,
     color: colors.textOnPrimary,
-    fontWeight: typography.semibold,
+    fontWeight: typography.medium,
   },
   bottomSpacer: {
     height: spacing.xxl,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: typography.h4,
+    fontWeight: typography.semibold,
+    color: colors.textPrimary,
+  },
+  input: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: typography.body,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: typography.bodySmall,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  authButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  authButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.body,
+    fontWeight: typography.semibold,
+  },
+  forgotPassword: {
+    color: colors.primary,
+    fontSize: typography.bodySmall,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  switchAuth: {
+    color: colors.textSecondary,
+    fontSize: typography.bodySmall,
+    textAlign: 'center',
   },
 });

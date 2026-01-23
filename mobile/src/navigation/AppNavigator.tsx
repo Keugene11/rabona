@@ -7,6 +7,7 @@ import {
   AuthScreen,
   SettingsScreen,
   ResultScreen,
+  PaywallScreen,
 } from '../screens';
 import { colors } from '../constants/theme';
 
@@ -17,6 +18,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Result: { audioUri: string };
   NoteDetail: { noteId: string };
+  Paywall: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -60,6 +62,14 @@ export default function AppNavigator() {
           component={SettingsScreen}
           options={{
             animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="Paywall"
+          component={PaywallScreen}
+          options={{
+            presentation: 'transparentModal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,35 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius, shadows } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotesStore } from '../store/useNotesStore';
+import { useSubscriptionStore } from '../store/useSubscriptionStore';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { user, isAuthenticated } = useAuthStore();
   const { notes } = useNotesStore();
+  const {
+    isProUser,
+    canRecord,
+    freeRecordingsUsed,
+    maxFreeRecordings,
+    initializePurchases
+  } = useSubscriptionStore();
+
+  useEffect(() => {
+    initializePurchases();
+  }, []);
+
+  console.log('HomeScreen notes:', notes.length, notes);
 
   const hasNotes = notes.length > 0;
+
+  const handleRecordPress = () => {
+    if (canRecord()) {
+      navigation.navigate('Record');
+    } else {
+      navigation.navigate('Paywall');
+    }
+  };
 
   const renderNoteCard = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.noteCard}>
@@ -53,25 +75,16 @@ export default function HomeScreen() {
               <Text style={styles.greeting}>
                 {isAuthenticated ? `Hey${user?.email ? ', ' + user.email.split('@')[0] : ''}` : 'Welcome'}
               </Text>
-              <Text style={styles.title}>VoiceNote Pro</Text>
+              <Text style={styles.title}>Rabona</Text>
             </View>
 
             <View style={styles.headerActions}>
-              {isAuthenticated ? (
-                <TouchableOpacity
-                  style={styles.headerButton}
-                  onPress={() => navigation.navigate('Settings')}
-                >
-                  <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={() => navigation.navigate('Auth')}
-                >
-                  <Text style={styles.loginButtonText}>Login</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => navigation.navigate('Settings')}
+              >
+                <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
@@ -79,53 +92,7 @@ export default function HomeScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {!isAuthenticated ? (
-          // Landing view for non-authenticated users
-          <View style={styles.landingContainer}>
-            <View style={styles.featureCard}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.featureIconBg}
-              >
-                <Ionicons name="mic" size={32} color={colors.textOnPrimary} />
-              </LinearGradient>
-              <Text style={styles.featureTitle}>Record Your Thoughts</Text>
-              <Text style={styles.featureDescription}>
-                Speak naturally and let AI transform your voice into polished, professional text.
-              </Text>
-            </View>
-
-            <View style={styles.benefitsRow}>
-              <View style={styles.benefitItem}>
-                <Ionicons name="flash" size={24} color={colors.primary} />
-                <Text style={styles.benefitText}>Fast</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="sparkles" size={24} color={colors.accent} />
-                <Text style={styles.benefitText}>AI Powered</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="cloud-done" size={24} color={colors.success} />
-                <Text style={styles.benefitText}>Cloud Sync</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.getStartedButton}
-              onPress={() => navigation.navigate('Auth')}
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.getStartedGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.getStartedButtonText}>Get Started Free</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.textOnPrimary} />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ) : hasNotes ? (
+        {hasNotes ? (
           // Notes list view
           <View style={styles.notesContainer}>
             <View style={styles.sectionHeader}>
@@ -143,7 +110,7 @@ export default function HomeScreen() {
             />
           </View>
         ) : (
-          // Empty state for authenticated users
+          // Empty state
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
               <Ionicons name="mic-outline" size={64} color={colors.textLight} />
@@ -157,10 +124,23 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* Usage Badge for Free Users */}
+      {!isProUser && (
+        <TouchableOpacity
+          style={styles.usageBadge}
+          onPress={() => navigation.navigate('Paywall')}
+        >
+          <Ionicons name="diamond-outline" size={14} color={colors.accent} />
+          <Text style={styles.usageBadgeText}>
+            {freeRecordingsUsed}/{maxFreeRecordings} free
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('Record')}
+        onPress={handleRecordPress}
         activeOpacity={0.8}
       >
         <LinearGradient
@@ -401,5 +381,25 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Usage badge styles
+  usageBadge: {
+    position: 'absolute',
+    bottom: spacing.xl + 80,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  usageBadgeText: {
+    fontSize: typography.caption,
+    color: colors.textSecondary,
+    fontWeight: typography.medium,
   },
 });

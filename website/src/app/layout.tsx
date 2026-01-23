@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VoiceNote Pro - AI-Powered Voice Notes",
+  title: "Rabona - AI-Powered Voice Notes",
   description: "Transform your voice into brilliant text with AI enhancement. Record, transcribe, and polish your notes with humor and professional flair.",
   keywords: ["voice notes", "ai transcription", "speech to text", "voice recorder", "ai writing"],
 };

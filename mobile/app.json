@@ -1,36 +1,38 @@
 {
   "expo": {
-    "name": "VoiceNote",
-    "slug": "voicenote",
+    "name": "Rabona",
+    "slug": "rabona",
+    "scheme": "rabona",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8F4F0"
+      "backgroundColor": "#0F172A"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourname.voicenote",
+      "bundleIdentifier": "com.keugene.rabona",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "VoiceNote needs access to your microphone to record voice notes."
+        "NSMicrophoneUsageDescription": "Rabona needs access to your microphone to record voice notes."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F8F4F0"
+        "backgroundColor": "#0F172A"
       },
-      "package": "com.yourname.voicenote",
+      "package": "com.keugene.rabona",
+      "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
-      ],
-      "usesCleartextTraffic": true
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,10 +41,16 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow VoiceNote to access your microphone to record voice notes."
+          "microphonePermission": "Allow Rabona to access your microphone to record voice notes."
         }
       ],
-      "@react-native-voice/voice"
-    ]
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "96397434-873b-4b77-82b6-54615c140078"
+      }
+    }
   }
 }

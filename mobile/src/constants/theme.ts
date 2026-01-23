@@ -1,4 +1,4 @@
-// VoiceNote Pro - Modern dark theme with teal accent
+// Rabona - Modern dark theme with teal accent
 export const colors = {
   // Primary colors - Teal/Cyan accent
   primary: '#00BFA6', // Teal accent

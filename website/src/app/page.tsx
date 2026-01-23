@@ -44,7 +44,7 @@ export default function Home() {
               <Mic className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">VoiceNote Pro</h1>
+              <h1 className="text-xl font-bold text-white">Rabona</h1>
             </div>
           </div>
 
@@ -159,7 +159,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-800 py-6 mt-16">
         <div className="max-w-3xl mx-auto px-4 text-center text-gray-600 text-sm">
-          <p>VoiceNote Pro</p>
+          <p>Rabona</p>
         </div>
       </footer>
 

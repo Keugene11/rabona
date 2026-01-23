@@ -1,5 +1,5 @@
 {
-  "name": "voicenote-backend",
+  "name": "rabona-backend",
   "version": "1.0.0",
   "description": "Backend API for VoiceNote app",
   "main": "dist/index.js",

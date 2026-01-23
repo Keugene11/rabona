@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Note } from '../types';
 
 interface NotesStore {
@@ -18,40 +20,49 @@ interface NotesStore {
   toggleStar: (noteId: string) => void;
 }
 
-export const useNotesStore = create<NotesStore>((set, get) => ({
-  notes: [],
-  isLoading: false,
-  selectedFolder: null,
-  searchQuery: '',
+export const useNotesStore = create<NotesStore>()(
+  persist(
+    (set, get) => ({
+      notes: [],
+      isLoading: false,
+      selectedFolder: null,
+      searchQuery: '',
 
-  setNotes: (notes) => set({ notes }),
+      setNotes: (notes) => set({ notes }),
 
-  addNote: (note) => set((state) => ({
-    notes: [note, ...state.notes],
-  })),
+      addNote: (note) => set((state) => ({
+        notes: [note, ...state.notes],
+      })),
 
-  updateNote: (noteId, updates) => set((state) => ({
-    notes: state.notes.map((note) =>
-      note.id === noteId ? { ...note, ...updates, updatedAt: new Date() } : note
-    ),
-  })),
+      updateNote: (noteId, updates) => set((state) => ({
+        notes: state.notes.map((note) =>
+          note.id === noteId ? { ...note, ...updates, updatedAt: new Date() } : note
+        ),
+      })),
 
-  deleteNote: (noteId) => set((state) => ({
-    notes: state.notes.filter((note) => note.id !== noteId),
-  })),
+      deleteNote: (noteId) => set((state) => ({
+        notes: state.notes.filter((note) => note.id !== noteId),
+      })),
 
-  setLoading: (isLoading) => set({ isLoading }),
+      setLoading: (isLoading) => set({ isLoading }),
 
-  setSelectedFolder: (selectedFolder) => set({ selectedFolder }),
+      setSelectedFolder: (selectedFolder) => set({ selectedFolder }),
 
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
 
-  toggleStar: (noteId) => set((state) => ({
-    notes: state.notes.map((note) =>
-      note.id === noteId ? { ...note, isStarred: !note.isStarred } : note
-    ),
-  })),
-}));
+      toggleStar: (noteId) => set((state) => ({
+        notes: state.notes.map((note) =>
+          note.id === noteId ? { ...note, isStarred: !note.isStarred } : note
+        ),
+      })),
+    }),
+    {
+      name: 'voicenote-notes-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ notes: state.notes }), // Only persist notes
+    }
+  )
+);
 
 // Selectors
 export const useFilteredNotes = () => {

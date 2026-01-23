@@ -19,6 +19,7 @@ import { colors, spacing, typography, borderRadius, shadows } from '../constants
 import { useRecordingStore } from '../store/useRecordingStore';
 import { useNotesStore } from '../store/useNotesStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useSubscriptionStore } from '../store/useSubscriptionStore';
 import apiService from '../services/api';
 import { ToneType, toneLabels } from '../types';
 
@@ -47,6 +48,7 @@ export default function ResultScreen() {
 
   const { addNote } = useNotesStore();
   const { isAuthenticated } = useAuthStore();
+  const { incrementFreeUsage, isProUser } = useSubscriptionStore();
 
   const [showOriginal, setShowOriginal] = useState(false);
   const [selectedToneLocal, setSelectedToneLocal] = useState<ToneType>(selectedTone);
@@ -144,12 +146,19 @@ export default function ResultScreen() {
       durationSeconds: 0,
       tags: [],
       isStarred: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       syncStatus: 'pending' as const,
     };
 
+    console.log('Saving note:', note);
     addNote(note);
+    console.log('Note saved!');
+
+    // Increment free usage counter if not a pro user
+    if (!isProUser) {
+      incrementFreeUsage();
+    }
 
     if (isAuthenticated) {
       try {

@@ -1,8 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 import { generateToken, authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+// Initialize Resend (set RESEND_API_KEY in .env)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // In-memory store for demo (use database in production)
 const users: Map<string, {
@@ -36,9 +40,33 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     // Store OTP
     otpStore.set(email, { otp, expiresAt });
 
-    // In production, send email here
-    // For development, log the OTP
+    // Log OTP for debugging
     console.log(`OTP for ${email}: ${otp}`);
+
+    // Send email if Resend is configured
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'VoiceNote Pro <onboarding@resend.dev>',
+          to: email,
+          subject: 'Your VoiceNote Pro Login Code',
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #0F172A; margin-bottom: 20px;">Your Login Code</h2>
+              <p style="color: #64748B; margin-bottom: 20px;">Enter this code to sign in to VoiceNote Pro:</p>
+              <div style="background: #0F172A; color: #00BFA6; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 12px; letter-spacing: 8px;">
+                ${otp}
+              </div>
+              <p style="color: #94A3B8; font-size: 14px; margin-top: 20px;">This code expires in 10 minutes. If you didn't request this code, you can safely ignore this email.</p>
+            </div>
+          `,
+        });
+        console.log(`Email sent to ${email}`);
+      } catch (emailError) {
+        console.error('Email send error:', emailError);
+        // Continue even if email fails in development
+      }
+    }
 
     res.json({
       success: true,

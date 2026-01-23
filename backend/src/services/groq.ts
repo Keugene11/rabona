@@ -48,7 +48,7 @@ async function searchWikipedia(term: string): Promise<string | null> {
   try {
     const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`;
     const response = await fetch(searchUrl, {
-      headers: { 'User-Agent': 'VoiceNotePro/1.0' }
+      headers: { 'User-Agent': 'Rabona/1.0' }
     });
 
     if (!response.ok) return null;
