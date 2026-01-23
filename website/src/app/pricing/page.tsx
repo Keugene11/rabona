@@ -13,7 +13,10 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<'monthly' | 'yearly' | null>(null);
 
   const handleSubscribe = async (plan: 'monthly' | 'yearly') => {
+    console.log('Subscribe clicked, plan:', plan, 'user:', user?.email);
+
     if (!user) {
+      console.log('No user, showing auth modal');
       setShowAuthModal(true);
       return;
     }
@@ -21,18 +24,27 @@ export default function PricingPage() {
     setLoading(plan);
     try {
       const token = await getToken();
+      console.log('Got token:', token ? 'yes' : 'no');
+
       if (!token) {
         setShowAuthModal(true);
         return;
       }
 
-      const { url } = await createCheckoutSession(token, plan);
-      if (url) {
-        window.location.href = url;
+      console.log('Creating checkout session...');
+      const response = await createCheckoutSession(token, plan);
+      console.log('Checkout response:', response);
+
+      if (response.url) {
+        window.location.href = response.url;
+      } else {
+        // Show error from response
+        const errorMsg = (response as any).error || 'No checkout URL returned';
+        alert(`Checkout failed: ${errorMsg}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout. Please try again.');
+      alert(`Failed to start checkout: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(null);
     }
