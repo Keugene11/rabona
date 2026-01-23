@@ -112,3 +112,48 @@ export async function rephraseNote(
 
   return response.json();
 }
+
+// Stripe subscription functions
+export interface SubscriptionStatus {
+  isSubscribed: boolean;
+  plan?: 'monthly' | 'yearly';
+  status?: string;
+  currentPeriodEnd?: string;
+}
+
+export async function getSubscriptionStatus(token: string): Promise<SubscriptionStatus> {
+  const response = await fetch(`${API_URL}/stripe/subscription-status`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
+export async function createCheckoutSession(
+  token: string,
+  plan: 'monthly' | 'yearly'
+): Promise<{ url: string }> {
+  const response = await fetch(`${API_URL}/stripe/create-checkout-session`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ plan }),
+  });
+
+  return response.json();
+}
+
+export async function createPortalSession(token: string): Promise<{ url: string }> {
+  const response = await fetch(`${API_URL}/stripe/create-portal-session`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}

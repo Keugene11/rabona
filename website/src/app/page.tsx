@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mic, FileText, Sparkles, LogOut, User } from 'lucide-react';
+import { Mic, FileText, Sparkles, LogOut, User, Crown } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Recorder } from '@/components/Recorder';
 import { Dashboard } from '@/components/Dashboard';
@@ -49,6 +50,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <Link
+              href="/pricing"
+              className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">Pricing</span>
+            </Link>
             {user ? (
               <>
                 <button
