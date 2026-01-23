@@ -18,27 +18,59 @@ export type ToneType =
   | 'original';
 
 /**
- * Extract potential search terms (companies, technologies, proper nouns) from text
+ * Extract potential search terms (companies, universities, organizations, technologies) from text
  */
 function extractSearchTerms(text: string): string[] {
-  // Match capitalized words (potential proper nouns), tech terms, and company-like names
-  const patterns = [
-    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g, // Capitalized words/phrases
-    /\b(?:Google|Apple|Microsoft|Amazon|Meta|Facebook|Netflix|Tesla|OpenAI|Anthropic|IBM|Oracle|Salesforce|Adobe|Nvidia|Intel|AMD|Spotify|Twitter|LinkedIn|Uber|Airbnb|Stripe|Shopify|Slack|Zoom|Discord|GitHub|GitLab|Docker|Kubernetes|AWS|Azure|GCP)\b/gi, // Common tech companies
-    /\b(?:React|Angular|Vue|Node|Python|JavaScript|TypeScript|Java|Kotlin|Swift|Rust|Go|Ruby|PHP|SQL|MongoDB|PostgreSQL|Redis|GraphQL|REST|API)\b/gi, // Tech terms
+  const lowerText = text.toLowerCase();
+
+  // Known companies, universities, and organizations to look for
+  const knownEntities = [
+    // Top tech companies
+    'google', 'apple', 'microsoft', 'amazon', 'meta', 'facebook', 'netflix', 'tesla', 'openai', 'anthropic',
+    'ibm', 'oracle', 'salesforce', 'adobe', 'nvidia', 'intel', 'amd', 'spotify', 'twitter', 'linkedin',
+    'uber', 'airbnb', 'stripe', 'shopify', 'slack', 'zoom', 'discord', 'github', 'gitlab', 'dropbox',
+    // Crypto/Fintech
+    'binance', 'coinbase', 'kraken', 'ftx', 'robinhood', 'paypal', 'square', 'block', 'visa', 'mastercard',
+    'revolut', 'wise', 'plaid', 'affirm', 'klarna', 'chime', 'sofi',
+    // Startups & other companies
+    'palantir', 'snowflake', 'datadog', 'mongodb', 'elastic', 'twilio', 'okta', 'cloudflare', 'figma',
+    'notion', 'airtable', 'asana', 'monday', 'atlassian', 'jira', 'confluence', 'vercel', 'netlify',
+    'heroku', 'digitalocean', 'linode', 'render', 'supabase', 'firebase', 'auth0',
+    // Big consulting/finance
+    'mckinsey', 'bain', 'bcg', 'deloitte', 'pwc', 'kpmg', 'ey', 'accenture', 'goldman sachs', 'morgan stanley',
+    'jp morgan', 'blackrock', 'citadel', 'two sigma', 'jane street', 'bridgewater',
+    // Top universities
+    'mit', 'stanford', 'harvard', 'yale', 'princeton', 'columbia', 'berkeley', 'caltech', 'carnegie mellon',
+    'cornell', 'upenn', 'penn', 'brown', 'dartmouth', 'duke', 'northwestern', 'uchicago', 'chicago',
+    'ucla', 'nyu', 'umich', 'michigan', 'gatech', 'georgia tech', 'ut austin', 'uiuc', 'illinois',
+    'purdue', 'waterloo', 'toronto', 'oxford', 'cambridge', 'imperial', 'eth zurich',
+    // Research labs
+    'deepmind', 'fair', 'google brain', 'microsoft research', 'ibm research', 'bell labs',
   ];
 
   const terms = new Set<string>();
-  for (const pattern of patterns) {
-    const matches = text.match(pattern) || [];
-    matches.forEach(match => {
-      if (match.length > 2 && !['The', 'And', 'For', 'But', 'Not', 'You', 'All', 'Can', 'Had', 'Her', 'Was', 'One', 'Our', 'Out'].includes(match)) {
-        terms.add(match);
-      }
-    });
+
+  // Check for known entities (case-insensitive)
+  for (const entity of knownEntities) {
+    if (lowerText.includes(entity)) {
+      // Capitalize properly for search
+      const properName = entity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      terms.add(properName);
+    }
   }
 
-  return Array.from(terms).slice(0, 5); // Limit to 5 terms
+  // Also match capitalized words that might be companies/orgs (2+ words together or single proper nouns)
+  const capitalizedPattern = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g;
+  const matches = text.match(capitalizedPattern) || [];
+  const skipWords = ['The', 'And', 'For', 'But', 'Not', 'You', 'All', 'Can', 'Had', 'Her', 'Was', 'One', 'Our', 'Out', 'This', 'That', 'They', 'What', 'When', 'Where', 'Why', 'How', 'Who', 'Will', 'Would', 'Could', 'Should', 'Have', 'Been', 'Being', 'Some', 'Any', 'Each', 'Every', 'Both', 'Few', 'More', 'Most', 'Other', 'Such', 'Only', 'Same', 'Than', 'Very', 'Just', 'Also', 'Now', 'Here', 'There', 'Then', 'Well'];
+
+  matches.forEach(match => {
+    if (match.length > 2 && !skipWords.includes(match)) {
+      terms.add(match);
+    }
+  });
+
+  return Array.from(terms).slice(0, 8); // Limit to 8 terms for richer context
 }
 
 /**
@@ -46,19 +78,46 @@ function extractSearchTerms(text: string): string[] {
  */
 async function searchWikipedia(term: string): Promise<string | null> {
   try {
+    // First try direct page lookup
     const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`;
     const response = await fetch(searchUrl, {
       headers: { 'User-Agent': 'Rabona/1.0' }
     });
 
-    if (!response.ok) return null;
-
-    const data = await response.json() as { extract?: string; description?: string };
-    if (data.extract) {
-      // Return first 2 sentences max
-      const sentences = data.extract.split('. ').slice(0, 2).join('. ');
-      return `${term}: ${sentences}`;
+    if (response.ok) {
+      const data = await response.json() as { extract?: string; description?: string; title?: string };
+      if (data.extract) {
+        // Return up to 4 sentences for richer context
+        const sentences = data.extract.split('. ').slice(0, 4).join('. ');
+        return `${data.title || term}: ${sentences}.`;
+      }
     }
+
+    // If direct lookup fails, try search API
+    const searchApiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&format=json&origin=*`;
+    const searchResponse = await fetch(searchApiUrl, {
+      headers: { 'User-Agent': 'Rabona/1.0' }
+    });
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json() as { query?: { search?: { title: string }[] } };
+      const firstResult = searchData.query?.search?.[0]?.title;
+      if (firstResult) {
+        // Fetch the summary for the first search result
+        const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstResult)}`;
+        const summaryResponse = await fetch(summaryUrl, {
+          headers: { 'User-Agent': 'Rabona/1.0' }
+        });
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json() as { extract?: string; title?: string };
+          if (summaryData.extract) {
+            const sentences = summaryData.extract.split('. ').slice(0, 4).join('. ');
+            return `${summaryData.title || term}: ${sentences}.`;
+          }
+        }
+      }
+    }
+
     return null;
   } catch {
     return null;
@@ -110,51 +169,67 @@ async function gatherContext(text: string): Promise<string> {
 
   if (validResults.length === 0) return '';
 
-  return '\n\nREAL-WORLD CONTEXT (use this to enhance the text with facts, but DO NOT cite sources):\n' + validResults.join('\n');
+  console.log('Found context for:', validResults.length, 'terms');
+
+  return `
+
+=== RESEARCHED INFORMATION ===
+Use this real-world data to ENHANCE the text. Weave in specific, relevant facts that strengthen the writing.
+DO NOT mention "according to research" or cite sources - just naturally incorporate the information.
+
+${validResults.join('\n\n')}
+
+=== END RESEARCHED INFORMATION ===`;
 }
 
 const tonePrompts: Record<ToneType, string> = {
-  professional: `You are an expert writer who adapts your style to match the content. Transform this spoken text into polished, compelling prose.
+  professional: `You are an expert writer who creates impressive, well-researched content. Transform this spoken text into polished, compelling prose.
 
     ABSOLUTE RULES:
     - Output ONLY the rewritten text, nothing else
     - NO explanations, notes, commentary, or meta-text
     - Remove filler words (um, uh, like, you know, basically, so, actually)
 
+    CRITICAL: INCORPORATE RESEARCHED INFORMATION
+    If real-world information is provided about companies, universities, or organizations mentioned:
+    - WEAVE IN specific facts, details, and context that strengthen the writing
+    - Show knowledge about the company's mission, products, culture, recent news, or values
+    - For universities: mention specific programs, research areas, clubs, or unique aspects
+    - Make it sound like the person has done their research and genuinely knows about the organization
+    - DO NOT say "I researched" or cite sources - just naturally include the knowledge
+
     CONTEXT-AWARE ENHANCEMENT:
-    Analyze what the person is talking about and adapt accordingly:
 
     FOR JOB APPLICATIONS / CAREER CONTENT:
     - Sound confident, articulate, and genuinely impressive
-    - Use smooth, flowing prose that's easy to read
+    - If applying to a specific company, show you understand what they do and why you're a fit
+    - Reference specific company initiatives, products, or values when relevant
     - Highlight achievements with specific impact where possible
-    - If they mention projects, elaborate on technical skills, languages, frameworks, or tools they likely used
-    - Make it sound like someone you'd want to hire - capable, thoughtful, results-driven
-    - Add relevant industry knowledge or context that shows expertise
+    - If they mention projects, elaborate on technical skills, languages, frameworks used
+    - Make it sound like someone who's done their homework and would be great to hire
+
+    FOR UNIVERSITY APPLICATIONS / ACADEMIC CONTENT:
+    - If applying to a specific school, show genuine knowledge about it
+    - Mention specific programs, professors, research areas, clubs, or campus culture
+    - Connect personal interests/goals to what the school offers
+    - Sound intellectually curious and well-informed
+    - Show why this specific school is the right fit, not just any school
 
     FOR PROJECT DESCRIPTIONS / TECHNICAL WORK:
     - Clearly explain what was built and why it matters
-    - Infer and mention relevant technologies, languages, frameworks (React, Python, Node.js, etc.)
+    - Infer and mention relevant technologies, languages, frameworks
     - Highlight problem-solving and technical decisions
     - Quantify impact if possible (performance improvements, user growth, etc.)
-    - Sound like a skilled engineer who communicates well
 
     FOR IDEAS / BRAINSTORMING:
     - Organize thoughts clearly and logically
-    - Expand on promising concepts
+    - Expand on promising concepts with relevant real-world context
     - Add structure without losing creativity
-    - Keep the energy and enthusiasm
-
-    FOR PERSONAL / CASUAL CONTENT:
-    - Keep it natural and conversational
-    - Light personality is fine here
-    - Still polish the prose but don't over-formalize
 
     FOR EVERYTHING ELSE:
     - Match the tone to the subject matter
     - Always improve clarity and flow
-    - Add relevant context that enhances understanding
-    - Make the writing interesting without being forced`,
+    - Add relevant context that enhances understanding`,
 
   casual: `You are a skilled writer helping someone sound articulate and natural. Rewrite this in a friendly, conversational tone.
 
