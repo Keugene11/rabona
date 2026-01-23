@@ -36,7 +36,7 @@ export async function transcribeAudio(
 
   try {
     // Use /process endpoint for transcription + rephrasing
-    const response = await fetch(`${API_URL}/api/transcribe/process`, {
+    const response = await fetch(`${API_URL}/transcribe/process`, {
       method: 'POST',
       headers,
       body: formData,
@@ -75,7 +75,7 @@ export async function transcribeAudio(
 }
 
 export async function getNotes(token: string): Promise<Note[]> {
-  const response = await fetch(`${API_URL}/api/notes`, {
+  const response = await fetch(`${API_URL}/notes`, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
@@ -86,7 +86,7 @@ export async function getNotes(token: string): Promise<Note[]> {
 }
 
 export async function deleteNote(noteId: string, token: string): Promise<boolean> {
-  const response = await fetch(`${API_URL}/api/notes/${noteId}`, {
+  const response = await fetch(`${API_URL}/notes/${noteId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -101,7 +101,7 @@ export async function rephraseNote(
   tone: string,
   token: string
 ): Promise<{ processedText: string }> {
-  const response = await fetch(`${API_URL}/api/notes/${noteId}/rephrase`, {
+  const response = await fetch(`${API_URL}/notes/${noteId}/rephrase`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
