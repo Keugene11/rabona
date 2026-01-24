@@ -9,7 +9,20 @@
       "Bash(npx expo start)",
       "Bash(curl:*)",
       "Bash(curl -s https://voicenote-pro.onrender.com/)",
-      "Bash(powershell -Command \"Invoke-WebRequest -Uri ''https://voicenote-pro.onrender.com/'' -UseBasicParsing | Select-Object -ExpandProperty Content\")"
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri ''https://voicenote-pro.onrender.com/'' -UseBasicParsing | Select-Object -ExpandProperty Content\")",
+      "Bash(npm install:*)",
+      "Bash(npx expo install expo-font react-native-worklets)",
+      "Bash(eas build:*)",
+      "Bash(npx vercel:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(timeout:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(ping:*)",
+      "Bash(dir /b c:UsersDanielProjectsaudiopenwebsite*.config.*)",
+      "Bash(dir c:UsersDanielProjectsaudiopenwebsite /b)",
+      "Bash(taskkill //F //PID 16304)"
     ]
   }
 }

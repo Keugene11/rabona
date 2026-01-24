@@ -159,7 +159,7 @@ export function Dashboard({ token, refreshTrigger }: DashboardProps) {
                         <Clock className="w-3.5 h-3.5 mr-1" />
                         {formatDate(note.createdAt)}
                       </span>
-                      <span>{formatDuration(note.duration)}</span>
+                      {note.duration && <span>{formatDuration(note.duration)}</span>}
                       <span className="px-2 py-0.5 bg-gray-700 rounded text-xs">
                         {toneInfo.emoji} {toneInfo.label}
                       </span>

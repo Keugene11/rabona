@@ -45,3 +45,6 @@ backend/uploads/*
 coverage/
 
 .vercel
+
+# Database
+backend/data/

@@ -1,13 +1,15 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 export interface Note {
   id: string;
   originalText: string;
   processedText: string;
+  enhancedText?: string;
   tone: string;
-  duration: number;
+  duration?: number;
+  detectedIntent?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface Suggestion {
@@ -106,7 +108,49 @@ export async function getNotes(token: string): Promise<Note[]> {
   });
 
   const data = await response.json();
-  return data.notes || [];
+  // Map backend response to frontend Note interface
+  return (data.notes || []).map((note: { id: string; originalText: string; enhancedText?: string; tone: string; detectedIntent?: string; createdAt: string }) => ({
+    ...note,
+    processedText: note.enhancedText || note.originalText,
+  }));
+}
+
+export async function saveNote(
+  token: string,
+  note: {
+    originalText: string;
+    enhancedText?: string;
+    tone?: string;
+    detectedIntent?: string;
+  }
+): Promise<Note | null> {
+  try {
+    const response = await fetch(`${API_URL}/notes`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(note),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to save note:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success && data.note) {
+      return {
+        ...data.note,
+        processedText: data.note.enhancedText || data.note.originalText,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error saving note:', error);
+    return null;
+  }
 }
 
 export async function deleteNote(noteId: string, token: string): Promise<boolean> {
