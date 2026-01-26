@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { LogOut, Sun, Moon, Search, X, Sparkles, HelpCircle } from 'lucide-react';
@@ -12,7 +12,7 @@ import { NotesList } from '@/components/NotesList';
 import { LocalNotesList } from '@/components/LocalNotesList';
 import { AuthModal } from '@/components/AuthModal';
 
-export default function Home() {
+function HomeContent() {
   const { user, loading, signOut, getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { isSubscribed, monthlyUsage, limit, refresh: refreshSubscription } = useSubscription();
@@ -188,5 +188,17 @@ export default function Home() {
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF6F1] dark:bg-[#202124]">
+        <div className="animate-pulse text-amber-600 dark:text-amber-400 font-serif italic text-xl">Loading...</div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
