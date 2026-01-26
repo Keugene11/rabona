@@ -125,21 +125,6 @@ export default function Home() {
           <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
 
-        {/* Sign in prompt for non-logged in users */}
-        {!user && (
-          <div className="text-center py-4 mb-6">
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
-              Sign in to save your notes to the cloud
-            </p>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium transition-colors"
-            >
-              Get Started
-            </button>
-          </div>
-        )}
-
         {/* Tutorial Video */}
         <div className="max-w-2xl mx-auto mb-10">
           <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
