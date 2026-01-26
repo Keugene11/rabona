@@ -31,14 +31,35 @@ router.get('/subscription-status', authenticateToken, async (req: AuthRequest, r
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripe_subscription_id) as Stripe.Subscription;
         console.log('Stripe subscription status:', subscription.status);
+        const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+
+        // Safely get current_period_end
+        let currentPeriodEnd: string | null = null;
+        const periodEnd = (subscription as any).current_period_end;
+        if (periodEnd && typeof periodEnd === 'number') {
+          try {
+            currentPeriodEnd = new Date(periodEnd * 1000).toISOString();
+          } catch (dateErr) {
+            console.error('Failed to parse current_period_end:', periodEnd);
+          }
+        }
+
         return res.json({
-          isSubscribed: subscription.status === 'active' || subscription.status === 'trialing',
+          isSubscribed: isActive,
           plan: 'monthly',
           status: subscription.status,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
+          currentPeriodEnd,
         });
       } catch (stripeErr) {
         console.error('Stripe subscription fetch failed:', stripeErr);
+        // Subscription fetch failed but user has pro tier in DB - trust the DB
+        if (user.subscription_tier === 'pro') {
+          return res.json({
+            isSubscribed: true,
+            plan: 'monthly',
+            status: 'active',
+          });
+        }
         // Subscription might have been deleted
         return res.json({
           isSubscribed: false,
