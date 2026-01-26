@@ -34,7 +34,10 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:rabona-nine.vercel.app)",
       "Bash(git ls-tree:*)",
-      "WebFetch(domain:website-beta-three-86.vercel.app)"
+      "WebFetch(domain:website-beta-three-86.vercel.app)",
+      "Bash(tasklist:*)",
+      "Bash(powershell.exe -Command \"Get-Process | Where-Object {$_ProcessName -like ''*node*''} | Select-Object Id, ProcessName\")",
+      "Bash(powershell.exe \"Get-Process node -ErrorAction SilentlyContinue | Format-Table Id, ProcessName\")"
     ]
   }
 }
