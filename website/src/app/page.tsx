@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Search, X, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, Sun, Moon, Search, X, Sparkles, Play } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -18,6 +19,15 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNewUser, setIsNewUser] = useState(false);
+
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('rabona_visited');
+    if (!hasVisited) {
+      setIsNewUser(true);
+      localStorage.setItem('rabona_visited', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -125,19 +135,34 @@ export default function Home() {
           <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
 
-        {/* Tutorial Video */}
-        <div className="max-w-2xl mx-auto mb-10">
-          <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
-            See how it works
-          </h2>
-          <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg aspect-video">
-            <iframe
-              src="https://www.youtube.com/embed/r952ohS07nY"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
-            />
+        {/* Tutorial Video - only for new users */}
+        {isNewUser && (
+          <div className="max-w-2xl mx-auto mb-10">
+            <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
+              See how it works
+            </h2>
+            <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg aspect-video">
+              <iframe
+                src="https://www.youtube.com/embed/r952ohS07nY"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Tutorial link for returning users */}
+        {!isNewUser && (
+          <div className="text-center mb-6">
+            <Link
+              href="/tutorial"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Watch tutorial
+            </Link>
+          </div>
+        )}
 
         {/* Notes Grid */}
         <div className="mt-4">
