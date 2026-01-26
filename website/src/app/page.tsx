@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { LogOut, Sun, Moon, Search, X, Sparkles, Play } from 'lucide-react';
+import { LogOut, Sun, Moon, Search, X, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -19,20 +19,6 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showTutorial, setShowTutorial] = useState(false);
-
-  useEffect(() => {
-    const tutorialHidden = localStorage.getItem('rabona_tutorial_hidden');
-    if (!tutorialHidden) {
-      setShowTutorial(true);
-    }
-  }, []);
-
-  const hideTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem('rabona_tutorial_hidden', 'true');
-  };
-
   useEffect(() => {
     if (user) {
       getToken().then(setToken);
@@ -86,6 +72,15 @@ export default function Home() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1">
+            {/* Tutorial link */}
+            <Link
+              href="/tutorial"
+              className="hidden sm:flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Tutorial
+            </Link>
+
             {/* Usage counter for logged-in free users */}
             {user && !isSubscribed && (
               <button
@@ -138,43 +133,6 @@ export default function Home() {
         <div className="max-w-xl mx-auto mb-8">
           <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
-
-        {/* Tutorial Video */}
-        {showTutorial && (
-          <div className="max-w-2xl mx-auto mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                See how it works
-              </h2>
-              <button
-                onClick={hideTutorial}
-                className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg aspect-video">
-              <iframe
-                src="https://www.youtube.com/embed/r952ohS07nY"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full border-0"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Tutorial link when video is hidden */}
-        {!showTutorial && (
-          <div className="text-center mb-6">
-            <Link
-              href="/tutorial"
-              className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Watch tutorial
-            </Link>
-          </div>
-        )}
 
         {/* Notes Grid */}
         <div className="mt-4">
