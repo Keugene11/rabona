@@ -19,15 +19,19 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
-    const hasVisited = localStorage.getItem('rabona_visited');
-    if (!hasVisited) {
-      setIsNewUser(true);
-      localStorage.setItem('rabona_visited', 'true');
+    const tutorialHidden = localStorage.getItem('rabona_tutorial_hidden');
+    if (!tutorialHidden) {
+      setShowTutorial(true);
     }
   }, []);
+
+  const hideTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('rabona_tutorial_hidden', 'true');
+  };
 
   useEffect(() => {
     if (user) {
@@ -135,12 +139,20 @@ export default function Home() {
           <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
 
-        {/* Tutorial Video - only for new users */}
-        {isNewUser && (
+        {/* Tutorial Video */}
+        {showTutorial && (
           <div className="max-w-2xl mx-auto mb-10">
-            <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
-              See how it works
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                See how it works
+              </h2>
+              <button
+                onClick={hideTutorial}
+                className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg aspect-video">
               <iframe
                 src="https://www.youtube.com/embed/r952ohS07nY"
@@ -151,8 +163,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tutorial link for returning users */}
-        {!isNewUser && (
+        {/* Tutorial link when video is hidden */}
+        {!showTutorial && (
           <div className="text-center mb-6">
             <Link
               href="/tutorial"
