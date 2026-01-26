@@ -177,7 +177,7 @@ export default function Home() {
         )}
 
         {/* Notes Grid */}
-        <div className="mt-4">
+        <div className="mt-4 max-w-5xl mx-auto">
           {user && token ? (
             <NotesList token={token} refreshTrigger={refreshTrigger} searchQuery={searchQuery} />
           ) : (
