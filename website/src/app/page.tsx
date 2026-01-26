@@ -134,6 +134,22 @@ export default function Home() {
           <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
 
+        {/* Tutorial Video for non-logged-in users */}
+        {!user && (
+          <div className="max-w-2xl mx-auto mb-10">
+            <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
+              See how it works
+            </h2>
+            <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg aspect-video">
+              <iframe
+                src="https://www.youtube.com/embed/r952ohS07nY"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Notes Grid */}
         <div className="mt-4">
           {user && token ? (
