@@ -40,23 +40,59 @@ export function useRecorder(): UseRecorderReturn {
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request audio - disable echo cancellation to avoid issues with background music
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false, // Disabled - was filtering out voice when music plays
+          noiseSuppression: false, // Disabled - can interfere with speech detection
+          autoGainControl: true,   // Keep this for volume normalization
+        },
+      });
       streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4',
-      });
+      // Log stream info for debugging
+      const audioTrack = stream.getAudioTracks()[0];
+      console.log('Audio track settings:', audioTrack.getSettings());
+
+      // Try different MIME types in order of preference for Whisper compatibility
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+      ];
+
+      let selectedMimeType = '';
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      console.log('Selected mimeType:', selectedMimeType || 'default');
+
+      const mediaRecorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
+      console.log('MediaRecorder mimeType:', mediaRecorder.mimeType);
 
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available, size:', event.data.size);
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+      };
+
+      // Collect data every 250ms for more granular capture
+      mediaRecorder.start(250);
       setIsRecording(true);
       setIsPaused(false);
       setDuration(0);
@@ -74,10 +110,22 @@ export function useRecorder(): UseRecorderReturn {
         return;
       }
 
-      mediaRecorderRef.current.onstop = () => {
+      const recorder = mediaRecorderRef.current;
+
+      // Request any remaining data before stopping
+      if (recorder.state === 'recording') {
+        recorder.requestData();
+      }
+
+      recorder.onstop = () => {
+        console.log('Recording stopped, chunks collected:', chunksRef.current.length);
+        console.log('Chunk sizes:', chunksRef.current.map(c => c.size));
+
         const blob = new Blob(chunksRef.current, {
-          type: mediaRecorderRef.current?.mimeType || 'audio/webm',
+          type: recorder.mimeType || 'audio/webm',
         });
+        console.log('Final blob size:', blob.size, 'type:', blob.type);
+
         setAudioBlob(blob);
 
         // Stop all tracks
@@ -89,7 +137,7 @@ export function useRecorder(): UseRecorderReturn {
         resolve(blob);
       };
 
-      mediaRecorderRef.current.stop();
+      recorder.stop();
       stopTimer();
       setIsRecording(false);
       setIsPaused(false);

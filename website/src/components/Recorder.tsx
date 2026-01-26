@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Mic, Square, Loader2, Copy, Check, RotateCcw } from 'lucide-react';
+import { Mic, Square, Loader2, Copy, Check, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRecorder } from '@/hooks/useRecorder';
 import { transcribeAudio, saveNote } from '@/lib/api';
 
@@ -10,10 +10,42 @@ interface RecorderProps {
   onNoteCreated?: () => void;
 }
 
+interface LocalNote {
+  id: string;
+  originalText: string;
+  processedText: string;
+  createdAt: string;
+}
+
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function saveLocalNote(note: LocalNote) {
+  const existing = localStorage.getItem('rabona_local_notes');
+  const notes: LocalNote[] = existing ? JSON.parse(existing) : [];
+  notes.unshift(note);
+  localStorage.setItem('rabona_local_notes', JSON.stringify(notes.slice(0, 50))); // Keep max 50 notes
+}
+
+export function getLocalNotes(): LocalNote[] {
+  if (typeof window === 'undefined') return [];
+  const existing = localStorage.getItem('rabona_local_notes');
+  return existing ? JSON.parse(existing) : [];
+}
+
+export function deleteLocalNote(id: string) {
+  const notes = getLocalNotes().filter(n => n.id !== id);
+  localStorage.setItem('rabona_local_notes', JSON.stringify(notes));
+}
+
+export function updateLocalNote(id: string, updates: { processedText?: string }) {
+  const notes = getLocalNotes().map(n =>
+    n.id === id ? { ...n, ...updates } : n
+  );
+  localStorage.setItem('rabona_local_notes', JSON.stringify(notes));
 }
 
 export function Recorder({ token, onNoteCreated }: RecorderProps) {
@@ -29,6 +61,7 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
   const [result, setResult] = useState<{ original: string; processed: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const handleStartRecording = async () => {
     setError(null);
@@ -56,11 +89,20 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
         });
 
         if (token) {
+          // Save to server if logged in
           await saveNote(token, {
             originalText: response.data.originalText,
             enhancedText: response.data.processedText,
             tone: response.data.tone,
             detectedIntent: response.data.detectedIntent,
+          });
+        } else {
+          // Save to localStorage if not logged in
+          saveLocalNote({
+            id: crypto.randomUUID(),
+            originalText: response.data.originalText,
+            processedText: response.data.processedText,
+            createdAt: new Date().toISOString(),
           });
         }
 
@@ -79,6 +121,7 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
     setResult(null);
     setError(null);
     setCopied(false);
+    setShowOriginal(false);
     resetRecording();
   };
 
@@ -107,15 +150,29 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
           <p className="text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
             {result.processed}
           </p>
-        </div>
 
-        {/* Original (collapsed) */}
-        <details className="rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <summary className="px-4 py-2.5 cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-            View original
-          </summary>
-          <p className="px-4 pb-3 text-sm text-gray-600 dark:text-gray-400">{result.original}</p>
-        </details>
+          {/* Original Transcription Toggle */}
+          {result.original && result.original !== result.processed && (
+            <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700">
+              <button
+                onClick={() => setShowOriginal(!showOriginal)}
+                className="flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+              >
+                {showOriginal ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                View original transcription
+              </button>
+              {showOriginal && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-black/20 rounded-lg p-3">
+                  {result.original}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* New Recording Button */}
         <button

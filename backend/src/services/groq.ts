@@ -70,6 +70,19 @@ function extractSearchTerms(text: string): string[] {
     }
   });
 
+  // Check for specific program/department mentions to create targeted searches
+  const programKeywords = ['math', 'mathematics', 'computer science', 'engineering', 'physics', 'chemistry', 'biology', 'economics', 'business', 'law', 'medicine', 'research', 'program', 'department'];
+  const foundProgram = programKeywords.find(kw => lowerText.includes(kw));
+
+  // If a program is mentioned along with an entity, create a combined search term
+  if (foundProgram) {
+    const termsArray = Array.from(terms);
+    termsArray.forEach(entity => {
+      // Add combined search like "Princeton mathematics department"
+      terms.add(`${entity} ${foundProgram}`);
+    });
+  }
+
   return Array.from(terms).slice(0, 8); // Limit to 8 terms for richer context
 }
 
@@ -147,7 +160,50 @@ async function searchDuckDuckGo(term: string): Promise<string | null> {
 }
 
 /**
+ * Extract only sentences containing specific proper nouns (product names, team names, etc.)
+ * Returns null if no specific facts found
+ */
+function extractSpecificFacts(text: string): string | null {
+  // Look for sentences containing specific proper nouns (capitalized multi-word names or known products)
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+
+  // Patterns that indicate specific named things (not generic descriptions)
+  const specificPatterns = [
+    // Product/service names (usually capitalized words together or with numbers)
+    /\b(AWS|EC2|S3|Lambda|Azure|GCP|iOS|Android|Chrome|Gmail|YouTube|Maps|Drive|Alexa|Siri|Cortana)\b/i,
+    // Named programs/initiatives with proper nouns
+    /\b(STEP|BOLD|APM|LDP|Foundry|Gotham|Apollo|Metropolis)\b/,
+    // Specific competitions/events
+    /\b(Putnam|IMO|ICPC|ACM|IEEE|SIGGRAPH|NeurIPS|ICML)\b/i,
+    // Specific numbers with context
+    /\b(ranked?\s*#?\d+|top\s*\d+|\d+%|\$[\d.]+\s*(billion|million|B|M))\b/i,
+    // Named labs/research groups (capitalized acronyms or multi-word names)
+    /\b([A-Z]{2,}(?:\s+Lab|\s+Research|\s+Institute)?)\b/,
+    // Specific course numbers
+    /\b(CS\s*\d{3}|Math\s*\d{3}|[A-Z]{2,4}\s*\d{3,4})\b/,
+  ];
+
+  const specificSentences: string[] = [];
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    // Check if this sentence has specific named facts
+    const hasSpecific = specificPatterns.some(pattern => pattern.test(trimmed));
+    if (hasSpecific) {
+      specificSentences.push(trimmed);
+    }
+  }
+
+  if (specificSentences.length === 0) {
+    return null;
+  }
+
+  return specificSentences.slice(0, 3).join('. ') + '.';
+}
+
+/**
  * Gather contextual information from web searches
+ * Only returns context if it contains specific proper nouns
  */
 async function gatherContext(text: string): Promise<string> {
   const terms = extractSearchTerms(text);
@@ -169,71 +225,75 @@ async function gatherContext(text: string): Promise<string> {
 
   if (validResults.length === 0) return '';
 
-  console.log('Found context for:', validResults.length, 'terms');
+  // Extract only specific facts from the results
+  const allText = validResults.join(' ');
+  const specificFacts = extractSpecificFacts(allText);
+
+  if (!specificFacts) {
+    console.log('No specific facts found in context - will just clean up text');
+    return '';
+  }
+
+  console.log('Found specific facts:', specificFacts.substring(0, 100) + '...');
 
   return `
 
-=== RESEARCHED INFORMATION ===
-Use this real-world data to ENHANCE the text. Weave in specific, relevant facts that strengthen the writing.
-DO NOT mention "according to research" or cite sources - just naturally incorporate the information.
+=== SPECIFIC FACTS (use these exact names/numbers) ===
+${specificFacts}
+=== END FACTS ===
 
-${validResults.join('\n\n')}
-
-=== END RESEARCHED INFORMATION ===`;
+RULE: Only use the EXACT names and numbers above. If none are relevant to what the user said, just clean up their text without adding anything.`;
 }
 
 const tonePrompts: Record<ToneType, string> = {
-  professional: `You are a writing polish tool. Your job is to clean up and refine spoken text into written form WITHOUT significantly changing the length or adding new ideas.
+  professional: `You are a writing editor. Clean up voice notes into polished text.
 
-    CRITICAL RULES:
-    - Output ONLY the polished text, nothing else
-    - NO explanations, notes, commentary, or meta-text
-    - KEEP THE SAME LENGTH - if they said 2 sentences, output ~2 sentences
-    - PRESERVE THEIR IDEAS - don't add new points they didn't mention
-    - Remove filler words (um, uh, like, you know, basically, so, actually)
-    - Fix grammar and improve word choice
-    - Make it flow better as written text
+    DEFAULT BEHAVIOR: Just clean up the text.
+    - Remove filler words (um, uh, like, you know, basically)
+    - Fix grammar and awkward phrasing
+    - Make it sound polished but keep their meaning
+    - DO NOT add information they didn't say
 
-    WHAT TO DO:
-    - Clean up rambling into clear, concise sentences
-    - Improve word choice (use more precise/professional words)
-    - Fix grammar, punctuation, and sentence structure
-    - Remove repetition and redundancy
-    - Make it read smoothly
+    ONLY ADD CONTEXT IF: You have SPECIFIC FACTS provided below (product names, team names, rankings with numbers).
+    If no specific facts are provided, or the facts aren't relevant, just clean up their text.
 
-    WHAT NOT TO DO:
-    - DON'T add new ideas, examples, or points
-    - DON'T expand 2 sentences into a paragraph
-    - DON'T add introductions or conclusions they didn't include
-    - DON'T add technical details they didn't mention
-    - DON'T make it longer than the original
+    NEVER USE THESE VAGUE WORDS:
+    - "exceptional", "excellent", "outstanding", "remarkable", "prestigious"
+    - "wide range of", "variety of", "numerous", "opportunities"
+    - "world-class", "top-tier", "renowned", "leading"
+    - "innovative", "cutting-edge" (unless naming WHAT specifically)
+    - "reputation", "culture", "environment"
 
-    LENGTH GUIDE:
-    - Short input (1-3 sentences) → Short output (1-3 sentences)
-    - Medium input (paragraph) → Medium output (paragraph)
-    - Long input (multiple paragraphs) → Similar length output
+    These words are EMPTY. They add nothing.
 
-    Your goal: Same ideas, better words, similar length.`,
+    EXAMPLES:
+    Input: "I want to work at Amazon because they're a good company"
+    Without specific facts → "I want to work at Amazon."
+    With fact "AWS powers 33% of cloud" → "I want to work at Amazon, particularly on AWS which powers 33% of cloud infrastructure."
 
-  casual: `You are a writing polish tool. Clean up spoken text into readable form while keeping it casual and conversational.
+    Input: "I want to apply to Cornell because of the quant stuff"
+    Without specific facts → "I want to apply to Cornell for its quantitative programs."
+    With fact "ranked #6 in applied math" → "I want to apply to Cornell, which is ranked #6 in applied mathematics."
 
-    RULES:
-    - Output ONLY the polished text, nothing else
-    - NO meta-commentary or explanations
-    - Remove filler words but keep personality
-    - KEEP THE SAME LENGTH - don't expand short inputs
+    RULE: When in doubt, keep it simple. A clean, short output is better than a vague, fluffy one.
+
+    Output ONLY the enhanced text.`,
+
+  casual: `You are a skilled writer helping transform spoken thoughts into well-written casual content.
 
     YOUR JOB:
-    - Clean up the text so it reads well
-    - Keep it casual and natural
-    - Fix obvious grammar issues
-    - Remove "um", "uh", "like", "you know"
-    - Make it sound like a well-spoken person, not a robot
+    - Clean up the text while keeping it warm and conversational
+    - Add helpful context and details that make the writing more engaging
+    - Keep personality and voice, but make it read smoothly
+    - Output ONLY the enhanced text
 
-    DON'T:
-    - Add new ideas they didn't mention
-    - Make it significantly longer
-    - Make it too formal or stiff`,
+    DO:
+    - Remove filler words but keep natural speech patterns
+    - Add interesting details or context where it strengthens the message
+    - Make it sound like an articulate, thoughtful person
+    - Keep it relatable and genuine
+
+    PRESERVE LENGTH: If they wrote a lot, don't cut it down. Enhance it.`,
 
   concise: `You are a master editor. Distill this to its essential points with clarity and impact.
 
@@ -243,21 +303,25 @@ const tonePrompts: Record<ToneType, string> = {
     - Use bullet points for multiple items
     - Every sentence must earn its place
     - Preserve key information and insights
-    - Be brief but complete`,
+    - Be brief but complete
+    - This is the ONLY mode where aggressive shortening is appropriate`,
 
-  email: `You are a professional communication expert. Transform this into a polished, effective email.
+  email: `You are an expert professional communicator. Transform this into a compelling, effective email that gets results.
 
-    RULES:
+    YOUR JOB:
+    - Create a polished, professional email
     - Output ONLY the email content
     - Include appropriate greeting and sign-off
-    - Clear, well-organized paragraphs
-    - Professional but personable tone
 
-    ENHANCEMENTS:
-    - If mentioning companies or people, show you've done your research with relevant context
-    - Clear call-to-action where appropriate
-    - Confident without being pushy
-    - Easy to read and respond to`,
+    ENHANCEMENTS (IMPORTANT):
+    - If they mention a company, ADD specific details about that company that show research
+    - If they mention a role, ADD relevant context about what that role typically involves
+    - Make their qualifications sound impressive with specific details
+    - Add confident, persuasive language
+    - Include a clear, compelling call-to-action
+    - Structure for easy reading with clear paragraphs
+
+    Make them sound knowledgeable, prepared, and genuinely interested.`,
 
   meeting_notes: `You are an executive assistant creating clear, actionable meeting notes.
 
@@ -270,15 +334,17 @@ const tonePrompts: Record<ToneType, string> = {
     ENHANCEMENTS:
     - Add context that clarifies decisions
     - Ensure action items are specific and assignable
-    - Make it useful for someone who wasn't there`,
+    - Make it useful for someone who wasn't there
+    - Include relevant background where helpful`,
 
-  original: `Clean up this text with minimal changes. Fix errors, remove filler words (um, uh, like, you know), improve flow.
+  original: `Clean up this text with light editing. Fix errors, remove filler words (um, uh, like, you know), improve flow.
 
     RULES:
     - Output ONLY the cleaned text
     - NO commentary
     - Preserve their voice and style
-    - Just make it read smoothly`,
+    - Minimal changes - just make it read smoothly
+    - This mode should change the least`,
 };
 
 export interface TranscriptionResult {
@@ -322,7 +388,7 @@ function detectContentIntent(text: string): ContentIntent {
   const lowerText = text.toLowerCase();
 
   // Job-related keywords
-  const jobKeywords = ['job', 'position', 'role', 'hiring', 'interview', 'resume', 'cv', 'employer', 'work experience', 'career', 'company culture', 'team', 'salary', 'benefits'];
+  const jobKeywords = ['job', 'position', 'role', 'hiring', 'interview', 'resume', 'cv', 'employer', 'work experience', 'career', 'company culture', 'team', 'salary', 'benefits', 'apply', 'applying', 'want to work', 'work at', 'join', 'application'];
   const coverLetterKeywords = ['cover letter', 'dear hiring', 'dear recruiter', 'i am writing to apply', 'i am interested in the position'];
 
   // Education-related keywords
@@ -363,7 +429,13 @@ function detectContentIntent(text: string): ContentIntent {
     return 'club_application';
   }
 
-  // Check for job application
+  // Check for job application - be more sensitive if company names are mentioned
+  const hasApplyIntent = ['apply', 'applying', 'want to work', 'work at', 'join'].some(kw => lowerText.includes(kw));
+  const mentionsCompany = ['google', 'apple', 'microsoft', 'amazon', 'meta', 'facebook', 'netflix', 'tesla', 'openai', 'anthropic', 'palantir', 'stripe', 'airbnb', 'uber', 'spotify', 'twitter', 'linkedin', 'github', 'snowflake', 'datadog', 'coinbase', 'robinhood', 'mckinsey', 'bain', 'bcg', 'deloitte', 'goldman sachs', 'morgan stanley', 'jp morgan', 'jane street', 'citadel', 'two sigma'].some(company => lowerText.includes(company));
+
+  if (hasApplyIntent && mentionsCompany) {
+    return 'job_application';
+  }
   if (jobKeywords.filter(kw => lowerText.includes(kw)).length >= 2) {
     return 'job_application';
   }
@@ -610,18 +682,38 @@ export async function transcribeAudio(audioFilePath: string): Promise<Transcript
 
     // Check if file exists and log its size
     const stats = fs.statSync(audioFilePath);
+    console.log('=== TRANSCRIPTION DEBUG ===');
     console.log('Transcribing audio file:', audioFilePath);
     console.log('File size:', stats.size, 'bytes');
+    console.log('File size (KB):', (stats.size / 1024).toFixed(2), 'KB');
 
-    // Read file as buffer and create a Blob
+    // Read file as buffer and create a Blob with correct MIME type
     const fileBuffer = fs.readFileSync(audioFilePath);
-    const blob = new Blob([fileBuffer], { type: 'audio/m4a' });
+    const ext = path.extname(audioFilePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.webm': 'audio/webm',
+      '.mp3': 'audio/mpeg',
+      '.mp4': 'audio/mp4',
+      '.m4a': 'audio/m4a',
+      '.wav': 'audio/wav',
+      '.ogg': 'audio/ogg',
+    };
+    const mimeType = mimeTypes[ext] || 'audio/webm';
+    const blob = new Blob([fileBuffer], { type: mimeType });
+    console.log('Audio file type:', ext, '-> MIME:', mimeType);
+
+    // Log first few bytes of the file to check header
+    const headerBytes = fileBuffer.slice(0, 20);
+    console.log('File header (hex):', headerBytes.toString('hex'));
+    console.log('File header (ascii):', headerBytes.toString('ascii').replace(/[^\x20-\x7E]/g, '.'));
 
     // Create FormData
     const formData = new FormData();
     formData.append('file', blob, path.basename(audioFilePath));
-    formData.append('model', 'whisper-large-v3');
+    formData.append('model', 'whisper-large-v3-turbo');
     formData.append('response_format', 'verbose_json');
+    formData.append('language', 'en'); // Force English to prevent misdetection
+    formData.append('temperature', '0'); // Use greedy decoding for more accuracy
 
     console.log('Sending request to Groq...');
 
@@ -639,8 +731,32 @@ export async function transcribeAudio(audioFilePath: string): Promise<Transcript
       throw new Error(`Groq API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json() as { text: string; language?: string; duration?: number };
+    const data = await response.json() as {
+      text: string;
+      language?: string;
+      duration?: number;
+      segments?: Array<{
+        id: number;
+        start: number;
+        end: number;
+        text: string;
+        no_speech_prob?: number;
+        avg_logprob?: number;
+      }>;
+    };
+
     console.log('Transcription successful, text length:', data.text?.length || 0);
+    console.log('Transcribed text:', data.text);
+    console.log('Audio duration:', data.duration, 'seconds');
+    console.log('Detected language:', data.language);
+
+    // Log segment details for debugging
+    if (data.segments && data.segments.length > 0) {
+      console.log('Segments:');
+      data.segments.forEach((seg, i) => {
+        console.log(`  ${i}: [${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s] "${seg.text}" (no_speech: ${seg.no_speech_prob?.toFixed(3) || 'N/A'})`);
+      });
+    }
 
     return {
       text: data.text,
@@ -675,11 +791,35 @@ export async function rephraseText(
     const detectedIntent = detectContentIntent(text);
     console.log('Detected content intent:', detectedIntent);
 
-    // Add intent-specific guidance to the prompt (skip web context to avoid expansion)
-    const intentGuidance = getIntentGuidance(detectedIntent);
-    const systemPrompt = (tonePrompts[tone] || tonePrompts.professional) + intentGuidance;
+    // Check if this is a simple/short input that shouldn't be over-enhanced
+    const wordCount = text.split(/\s+/).length;
+    const isSimpleInput = wordCount < 10 && detectedIntent === 'general';
+
+    // Check if text mentions any companies/entities that warrant web research
+    const searchTerms = extractSearchTerms(text);
+    const hasEntities = searchTerms.length > 0;
+
+    // Gather web context when: not a simple greeting AND (has entities OR is substantive content)
+    let webContext = '';
+    if (!isSimpleInput && (hasEntities || wordCount > 15)) {
+      webContext = await gatherContext(text);
+      if (webContext) {
+        console.log('Added web context for enhancement');
+      }
+    }
+
+    // Add intent-specific guidance only for substantive content
+    const intentGuidance = isSimpleInput ? '' : getIntentGuidance(detectedIntent);
+    const systemPrompt = (tonePrompts[tone] || tonePrompts.professional) + intentGuidance + webContext;
 
     console.log('Rephrasing text with tone:', tone);
+
+    // Calculate appropriate max tokens based on input length
+    // Short inputs get fewer tokens to prevent over-expansion
+    // Long inputs get more tokens to preserve detail
+    const maxTokens = isSimpleInput
+      ? Math.min(500, wordCount * 10)  // Short inputs: keep it brief
+      : Math.max(2000, Math.min(4000, wordCount * 3));  // Long inputs: allow expansion
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -699,8 +839,8 @@ export async function rephraseText(
             content: text,
           },
         ],
-        temperature: 0.5,
-        max_tokens: 1000,
+        temperature: 0.7,
+        max_tokens: maxTokens,
       }),
     });
 
@@ -738,46 +878,95 @@ export async function rephraseText(
 function getIntentGuidance(intent: ContentIntent): string {
   const guidanceMap: Record<ContentIntent, string> = {
     job_application: `
-    DETECTED: JOB/CAREER CONTENT
-    Polish for professional context. Use stronger action verbs. Keep their length.`,
+
+    DETECTED: JOB APPLICATION
+    Clean up their text. Only add company details if SPECIFIC FACTS are provided above (product names, team names, program names like "STEP internship" or "Foundry platform").
+    No specific facts? Just output a clean version of what they said.`,
 
     cover_letter: `
+
     DETECTED: COVER LETTER
-    Polish for formal business communication. Keep their points, just make them clearer.`,
+    Clean up into a professional cover letter. Only add company details if SPECIFIC FACTS are provided above.
+    No specific facts? Just make their text sound professional without adding vague corporate language.`,
 
     college_essay: `
+
     DETECTED: COLLEGE ESSAY
-    Keep their voice and story. Just clean up the language. Don't add new ideas.`,
+    Clean up while preserving their voice. Only add school details if SPECIFIC FACTS are provided above (club names, course numbers, competition names like "Putnam" or "TreeHacks").
+    No specific facts? Just polish their text without adding vague praise.`,
 
     personal_statement: `
+
     DETECTED: PERSONAL STATEMENT
-    Preserve their personal voice. Clean up without adding new content.`,
+    Elevate their personal narrative:
+    - Enhance storytelling with vivid, specific details
+    - Strengthen the connection between past experiences and future goals
+    - Add context that helps readers understand their unique perspective
+    - Make their voice shine while improving clarity and impact`,
 
     scholarship_application: `
+
     DETECTED: SCHOLARSHIP APPLICATION
-    Polish professionally. Keep their points and length.`,
+    Make this a winning application:
+    - Highlight their achievements with specific context
+    - Connect their goals to broader impact
+    - Show why they deserve investment
+    - Add compelling details about their aspirations and plans`,
 
     competition_entry: `
-    DETECTED: COMPETITION ENTRY
-    Keep it punchy and clear. Don't add new features or ideas they didn't mention.`,
+
+    DETECTED: COMPETITION/HACKATHON ENTRY
+    Make this stand out to judges:
+    - Emphasize innovation and unique approach
+    - Add technical credibility with relevant details
+    - Highlight problem-solving and impact
+    - Make the value proposition crystal clear`,
 
     club_application: `
-    DETECTED: CLUB APPLICATION
-    Keep it genuine and concise. Polish without expanding.`,
+
+    DETECTED: CLUB/ORGANIZATION APPLICATION
+    Show they'd be a valuable member:
+    - Highlight relevant experience and skills
+    - Show genuine interest in the organization's mission
+    - Demonstrate what they can contribute
+    - Make their enthusiasm authentic and specific`,
 
     project_description: `
+
     DETECTED: PROJECT DESCRIPTION
-    Clean up the technical description. Keep their tech stack if mentioned, don't add new technologies they didn't say.`,
+    Make this technically impressive:
+    - If they mention building something, add likely technologies and methodologies
+    - Highlight technical challenges and solutions
+    - Emphasize impact and user value
+    - Use industry-standard terminology
+    - Make it sound like professional-grade work`,
 
     email_draft: `
+
     DETECTED: EMAIL
-    Keep it brief and professional. Don't add extra pleasantries.`,
+    Make this effective and professional:
+    - If contacting a company, add specific details that show research
+    - Clear structure with compelling opening
+    - Professional but personable tone
+    - Strong, clear call-to-action`,
 
     meeting_notes: `
-    DETECTED: MEETING NOTES
-    Use clear bullet points. Keep it scannable and brief.`,
 
-    general: ''
+    DETECTED: MEETING NOTES
+    Structure for clarity and action:
+    - Clear headings and bullet points
+    - Specific, assignable action items
+    - Context for decisions made
+    - Easy to scan and reference later`,
+
+    general: `
+
+    GENERAL CONTENT
+    Enhance thoughtfully:
+    - Add relevant context and details
+    - Improve clarity and flow
+    - Make it more engaging and professional
+    - Preserve their core message while elevating the execution`
   };
 
   return guidanceMap[intent] || '';

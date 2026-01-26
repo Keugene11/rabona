@@ -6,6 +6,7 @@ import {
   getUserNotes,
   getNoteById,
   deleteNote,
+  updateNote,
   countUserNotes,
   DBNote,
   findUserById,
@@ -118,6 +119,38 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
   } catch (error) {
     console.error('Get note error:', error);
     res.status(500).json({ error: 'Failed to get note' });
+  }
+});
+
+/**
+ * PUT /notes/:id
+ * Update a note
+ */
+router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { enhancedText, originalText } = req.body;
+
+    const note = await updateNote(req.params.id, req.userId!, { enhancedText, originalText });
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      note: {
+        id: note.id,
+        originalText: note.original_text,
+        enhancedText: note.enhanced_text,
+        tone: note.tone,
+        detectedIntent: note.detected_intent,
+        createdAt: note.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Update note error:', error);
+    res.status(500).json({ error: 'Failed to update note' });
   }
 });
 

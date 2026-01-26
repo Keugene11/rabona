@@ -132,6 +132,35 @@ export async function deleteNote(id: string, userId: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+export async function updateNote(
+  id: string,
+  userId: string,
+  updates: { enhancedText?: string; originalText?: string }
+): Promise<DBNote | null> {
+  const fields: string[] = [];
+  const values: (string | null)[] = [];
+  let paramIndex = 3;
+
+  if (updates.enhancedText !== undefined) {
+    fields.push(`enhanced_text = $${paramIndex++}`);
+    values.push(updates.enhancedText);
+  }
+  if (updates.originalText !== undefined) {
+    fields.push(`original_text = $${paramIndex++}`);
+    values.push(updates.originalText);
+  }
+
+  if (fields.length === 0) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `UPDATE notes SET ${fields.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`,
+    [id, userId, ...values]
+  );
+  return result.rows[0] || null;
+}
+
 export async function countUserNotes(userId: string): Promise<number> {
   const result = await pool.query('SELECT COUNT(*) as count FROM notes WHERE user_id = $1', [userId]);
   return parseInt(result.rows[0].count, 10);

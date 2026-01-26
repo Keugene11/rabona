@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mic, Sparkles, LogOut, User, Sun, Moon, Copy } from 'lucide-react';
+import { Mic, LogOut, Sun, Moon, Search, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Recorder } from '@/components/Recorder';
 import { NotesList } from '@/components/NotesList';
+import { LocalNotesList } from '@/components/LocalNotesList';
 import { AuthModal } from '@/components/AuthModal';
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -29,25 +31,50 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#202124]">
         <div className="animate-pulse text-amber-600 dark:text-amber-400">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen transition-colors">
+    <div className="min-h-screen bg-white dark:bg-[#202124] transition-colors">
       {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--background)]/80 border-b border-amber-200/50 dark:border-gray-800">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-serif text-gray-900 dark:text-white">Rabona</h1>
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#202124] border-b border-gray-200 dark:border-gray-700/50">
+        <div className="flex items-center px-3 py-2 gap-2">
+          {/* Logo */}
+          <div className="flex items-center gap-2 px-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
+              <Mic className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-xl font-normal text-gray-700 dark:text-gray-200 hidden sm:block">Rabona</h1>
           </div>
 
+          {/* Search Bar */}
+          <div className="flex-1 max-w-2xl">
+            <div className="flex items-center bg-gray-100 dark:bg-[#525355] rounded-lg px-4 py-2.5 gap-3">
+              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setSearchQuery('')}
+                className="flex-1 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')}>
+                  <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Actions */}
           <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-amber-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-3 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
@@ -55,14 +82,15 @@ export default function Home() {
             {user ? (
               <button
                 onClick={signOut}
-                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-amber-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-3 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Sign out"
               >
                 <LogOut className="w-5 h-5" />
               </button>
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-gray-800 text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors"
               >
                 Sign In
               </button>
@@ -71,71 +99,39 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        {/* Hero Section - only for non-logged in users */}
-        {!user && (
-          <div className="text-center space-y-4 py-8">
-            <h2 className="text-4xl md:text-5xl font-serif text-gray-900 dark:text-white leading-tight">
-              Your voice, <br />
-              <span className="italic">perfectly written.</span>
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg max-w-md mx-auto">
-              Turn your voice into polished text. Record, transcribe, and refine with AI.
-            </p>
+      <main className="px-4 sm:px-6 lg:px-10 py-6">
+        {/* Recorder */}
+        <div className="max-w-xl mx-auto mb-8">
+          <div className="rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-[#202124] overflow-hidden">
+            <div className="p-4">
+              <Recorder token={token} onNoteCreated={handleNoteCreated} />
+            </div>
           </div>
-        )}
-
-        {/* Recorder Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-amber-200/50 dark:border-gray-800 shadow-sm">
-          <Recorder token={token} onNoteCreated={handleNoteCreated} />
         </div>
 
         {/* Sign in prompt for non-logged in users */}
         {!user && (
-          <div className="text-center py-4">
-            <p className="text-gray-500 dark:text-gray-500 text-sm mb-3">
-              Sign in to save your notes
+          <div className="text-center py-4 mb-6">
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
+              Sign in to save your notes to the cloud
             </p>
             <button
               onClick={() => setShowAuthModal(true)}
-              className="px-6 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium transition-colors"
+              className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium transition-colors"
             >
               Get Started
             </button>
           </div>
         )}
 
-        {/* Notes List for logged in users */}
-        {user && token && (
-          <NotesList token={token} refreshTrigger={refreshTrigger} />
-        )}
-
-        {/* Features - only show when not logged in */}
-        {!user && (
-          <div className="grid grid-cols-3 gap-4 pt-8 pb-4">
-            <div className="text-center p-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-3">
-                <Mic className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <p className="font-medium text-gray-900 dark:text-white">Record</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Speak naturally</p>
-            </div>
-            <div className="text-center p-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <p className="font-medium text-gray-900 dark:text-white">Polish</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">AI cleans it up</p>
-            </div>
-            <div className="text-center p-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-3">
-                <Copy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <p className="font-medium text-gray-900 dark:text-white">Copy</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Use anywhere</p>
-            </div>
-          </div>
-        )}
+        {/* Notes Grid */}
+        <div className="mt-4">
+          {user && token ? (
+            <NotesList token={token} refreshTrigger={refreshTrigger} searchQuery={searchQuery} />
+          ) : (
+            <LocalNotesList refreshTrigger={refreshTrigger} searchQuery={searchQuery} />
+          )}
+        </div>
       </main>
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />

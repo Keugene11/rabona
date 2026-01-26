@@ -1,25 +1,27 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Copy, Check, Loader2, X, ChevronDown, ChevronUp, CheckSquare, Square } from 'lucide-react';
-import { Note, getNotes, deleteNote, updateNote } from '@/lib/api';
+import { Trash2, Copy, Check, X, ChevronDown, ChevronUp, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { getLocalNotes, deleteLocalNote, updateLocalNote } from './Recorder';
 
-interface NotesListProps {
-  token: string;
+interface LocalNote {
+  id: string;
+  originalText: string;
+  processedText: string;
+  createdAt: string;
+}
+
+interface LocalNotesListProps {
   refreshTrigger?: number;
   searchQuery?: string;
 }
 
-export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesListProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function LocalNotesList({ refreshTrigger, searchQuery = '' }: LocalNotesListProps) {
+  const [notes, setNotes] = useState<LocalNote[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [selectedNote, setSelectedNote] = useState<LocalNote | null>(null);
   const [editedText, setEditedText] = useState('');
-  const [saving, setSaving] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
@@ -27,22 +29,9 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
 
   const selectionMode = selectedIds.size > 0;
 
-  const loadNotes = async () => {
-    try {
-      setLoading(true);
-      const fetchedNotes = await getNotes(token);
-      setNotes(fetchedNotes);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load notes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadNotes();
-  }, [token, refreshTrigger]);
+    setNotes(getLocalNotes());
+  }, [refreshTrigger]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -52,21 +41,14 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
     }
   }, [editedText]);
 
-  const handleDelete = async (noteId: string) => {
-    setDeletingId(noteId);
-    try {
-      await deleteNote(noteId, token);
-      setNotes(notes.filter((n) => n.id !== noteId));
-      if (selectedNote?.id === noteId) {
-        setSelectedNote(null);
-      }
-      selectedIds.delete(noteId);
-      setSelectedIds(new Set(selectedIds));
-    } catch (err) {
-      setError('Failed to delete note');
-    } finally {
-      setDeletingId(null);
+  const handleDelete = (noteId: string) => {
+    deleteLocalNote(noteId);
+    setNotes(notes.filter((n) => n.id !== noteId));
+    if (selectedNote?.id === noteId) {
+      setSelectedNote(null);
     }
+    selectedIds.delete(noteId);
+    setSelectedIds(new Set(selectedIds));
   };
 
   const toggleSelect = (noteId: string) => {
@@ -79,15 +61,13 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
     setSelectedIds(newSelected);
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
     setIsDeleting(true);
     try {
-      await Promise.all(Array.from(selectedIds).map((id) => deleteNote(id, token)));
+      Array.from(selectedIds).forEach((id) => deleteLocalNote(id));
       setNotes(notes.filter((n) => !selectedIds.has(n.id)));
       setSelectedIds(new Set());
-    } catch (err) {
-      setError('Failed to delete some notes');
     } finally {
       setIsDeleting(false);
     }
@@ -107,21 +87,17 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleNoteClick = (note: Note) => {
+  const handleNoteClick = (note: LocalNote) => {
     setSelectedNote(note);
     setEditedText(note.processedText);
     setShowOriginal(false);
   };
 
-  const handleCloseModal = async () => {
+  const handleCloseModal = () => {
     // Save if text has changed
     if (selectedNote && editedText !== selectedNote.processedText) {
-      setSaving(true);
-      const updated = await updateNote(selectedNote.id, token, { enhancedText: editedText });
-      if (updated) {
-        setNotes(notes.map((n) => (n.id === selectedNote.id ? { ...n, processedText: editedText } : n)));
-      }
-      setSaving(false);
+      updateLocalNote(selectedNote.id, { processedText: editedText });
+      setNotes(notes.map((n) => (n.id === selectedNote.id ? { ...n, processedText: editedText } : n)));
     }
     setSelectedNote(null);
     setEditedText('');
@@ -143,28 +119,6 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
     );
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-500 dark:text-red-400 mb-3 text-sm">{error}</p>
-        <button
-          onClick={loadNotes}
-          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm font-medium transition-colors"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   if (filteredNotes.length === 0) {
     if (searchQuery) {
       return (
@@ -173,11 +127,7 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
         </div>
       );
     }
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">No notes yet. Record something!</p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -262,15 +212,10 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
                         e.stopPropagation();
                         handleDelete(note.id);
                       }}
-                      disabled={deletingId === note.id}
-                      className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                      className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                       title="Delete"
                     >
-                      {deletingId === note.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 )}
@@ -322,14 +267,7 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
           <div className="bg-white dark:bg-[#28292c] rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-                {saving && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Saving...
-                  </span>
-                )}
-              </div>
+              <div className="flex items-center gap-2" />
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleCopy(editedText, selectedNote.id)}
@@ -344,15 +282,10 @@ export function NotesList({ token, refreshTrigger, searchQuery = '' }: NotesList
                 </button>
                 <button
                   onClick={() => handleDelete(selectedNote.id)}
-                  disabled={deletingId === selectedNote.id}
-                  className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   title="Delete"
                 >
-                  {deletingId === selectedNote.id ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-5 h-5" />
-                  )}
+                  <Trash2 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleCloseModal}

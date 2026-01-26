@@ -164,6 +164,40 @@ export async function deleteNote(noteId: string, token: string): Promise<boolean
   return response.ok;
 }
 
+export async function updateNote(
+  noteId: string,
+  token: string,
+  updates: { enhancedText?: string; originalText?: string }
+): Promise<Note | null> {
+  try {
+    const response = await fetch(`${API_URL}/notes/${noteId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to update note:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success && data.note) {
+      return {
+        ...data.note,
+        processedText: data.note.enhancedText || data.note.originalText,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error updating note:', error);
+    return null;
+  }
+}
+
 export async function rephraseNote(
   noteId: string,
   tone: string,
