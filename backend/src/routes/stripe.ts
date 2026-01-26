@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import {
@@ -128,7 +128,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(req.body as Buffer, sig, endpointSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return res.status(400).send(`Webhook Error: ${(err as Error).message}`);
