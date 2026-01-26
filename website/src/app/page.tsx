@@ -141,8 +141,7 @@ export default function Home() {
         )}
 
         {/* Tutorial Video */}
-        {!user && (
-          <div className="max-w-2xl mx-auto mb-10">
+        <div className="max-w-2xl mx-auto mb-10">
             <h2 className="text-center text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
               See how it works
             </h2>
@@ -163,8 +162,7 @@ export default function Home() {
                 </div>
               </div>
             </a>
-          </div>
-        )}
+        </div>
 
         {/* Notes Grid */}
         <div className="mt-4">
