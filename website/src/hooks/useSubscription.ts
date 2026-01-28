@@ -76,12 +76,32 @@ export function useSubscription() {
     }
   };
 
+  // Cache the last known subscription status in localStorage to prevent flickering
+  useEffect(() => {
+    if (status && user) {
+      localStorage.setItem(`rabona_sub_${user.uid}`, JSON.stringify(status));
+    }
+  }, [status, user]);
+
+  // Get cached status while loading
+  const getCachedStatus = (): SubscriptionStatus | null => {
+    if (typeof window === 'undefined' || !user) return null;
+    try {
+      const cached = localStorage.getItem(`rabona_sub_${user.uid}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const effectiveStatus = status || (loading ? getCachedStatus() : null);
+
   return {
-    status,
+    status: effectiveStatus,
     loading,
-    isSubscribed: status?.isSubscribed ?? false,
-    monthlyUsage: status?.monthlyUsage ?? 0,
-    limit: status?.limit ?? 5,
+    isSubscribed: effectiveStatus?.isSubscribed ?? false,
+    monthlyUsage: effectiveStatus?.monthlyUsage ?? 0,
+    limit: effectiveStatus?.limit ?? 5,
     openCheckout,
     openPortal,
     refresh: fetchStatus,
