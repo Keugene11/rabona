@@ -28,15 +28,10 @@ export function useSubscription() {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusForUserId, setStatusForUserId] = useState<string | null>(null);
-  const { user, loading: authLoading, getToken } = useAuth();
+  const { user, getToken } = useAuth();
 
   const fetchStatus = useCallback(async () => {
-    // Don't do anything while auth is still loading
-    if (authLoading) {
-      return;
-    }
-
-    // User is logged out (auth finished loading and no user)
+    // User is logged out
     if (!user) {
       setStatus(null);
       setCachedSubscription(null);
@@ -58,7 +53,7 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, getToken]);
+  }, [user, getToken]);
 
   useEffect(() => {
     fetchStatus();
