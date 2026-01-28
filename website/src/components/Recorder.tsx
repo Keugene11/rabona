@@ -31,6 +31,42 @@ function saveLocalNote(note: LocalNote) {
   const notes: LocalNote[] = existing ? JSON.parse(existing) : [];
   notes.unshift(note);
   localStorage.setItem('rabona_local_notes', JSON.stringify(notes.slice(0, 50))); // Keep max 50 notes
+  // Increment usage count (separate from notes so deleting doesn't reset limit)
+  incrementLocalUsage();
+}
+
+function incrementLocalUsage() {
+  const usage = getLocalUsage();
+  localStorage.setItem('rabona_local_usage', JSON.stringify({
+    count: usage.count + 1,
+    resetDate: usage.resetDate,
+  }));
+}
+
+function getLocalUsage(): { count: number; resetDate: string } {
+  if (typeof window === 'undefined') return { count: 0, resetDate: getNextMonthReset() };
+
+  const existing = localStorage.getItem('rabona_local_usage');
+  if (!existing) {
+    return { count: 0, resetDate: getNextMonthReset() };
+  }
+
+  const usage = JSON.parse(existing);
+
+  // Check if we need to reset (new month)
+  if (new Date() >= new Date(usage.resetDate)) {
+    const newUsage = { count: 0, resetDate: getNextMonthReset() };
+    localStorage.setItem('rabona_local_usage', JSON.stringify(newUsage));
+    return newUsage;
+  }
+
+  return usage;
+}
+
+function getNextMonthReset(): string {
+  const now = new Date();
+  // Reset on the 1st of next month
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 }
 
 export function getLocalNotes(): LocalNote[] {
@@ -66,27 +102,27 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
   const [copied, setCopied] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [localNoteCount, setLocalNoteCount] = useState(0);
+  const [localUsageCount, setLocalUsageCount] = useState(0);
   const [mode, setMode] = useState<'voice' | 'text'>('voice');
   const [textInput, setTextInput] = useState('');
   const { openCheckout, isSubscribed, monthlyUsage, limit, hasFetchedOnce } = useSubscription();
 
-  // Track local note count for non-logged-in users
+  // Track local usage count for non-logged-in users (persists even if notes deleted)
   const LOCAL_LIMIT = 5;
-  const isLocalLimitReached = !isLoggedIn && localNoteCount >= LOCAL_LIMIT;
-  const localUsageRemaining = LOCAL_LIMIT - localNoteCount;
+  const isLocalLimitReached = !isLoggedIn && localUsageCount >= LOCAL_LIMIT;
+  const localUsageRemaining = LOCAL_LIMIT - localUsageCount;
 
   // For logged-in free users, check server-side limit
   const isFreeUser = isLoggedIn && !isSubscribed;
   const freeUsageRemaining = limit - monthlyUsage;
   const isServerLimitReached = isFreeUser && monthlyUsage >= limit;
 
-  // Update local note count on mount and when notes change
+  // Update local usage count on mount
   useEffect(() => {
     if (!isLoggedIn) {
-      setLocalNoteCount(getLocalNotes().length);
+      setLocalUsageCount(getLocalUsage().count);
     }
-  }, [isLoggedIn, refreshTrigger]);
+  }, [isLoggedIn]);
 
   const handleStartRecording = async () => {
     setError(null);
@@ -126,7 +162,7 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             processedText: response.data.processedText,
             createdAt: new Date().toISOString(),
           });
-          setLocalNoteCount(getLocalNotes().length);
+          setLocalUsageCount(getLocalUsage().count);
         }
 
         onNoteCreated?.();
@@ -176,8 +212,8 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             processedText: response.data.processedText,
             createdAt: new Date().toISOString(),
           });
-          // Update local note count
-          setLocalNoteCount(getLocalNotes().length);
+          // Update local usage count
+          setLocalUsageCount(getLocalUsage().count);
         }
 
         onNoteCreated?.();
