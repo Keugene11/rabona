@@ -31,42 +31,6 @@ function saveLocalNote(note: LocalNote) {
   const notes: LocalNote[] = existing ? JSON.parse(existing) : [];
   notes.unshift(note);
   localStorage.setItem('rabona_local_notes', JSON.stringify(notes.slice(0, 50))); // Keep max 50 notes
-  // Increment usage count (separate from notes so deleting doesn't reset limit)
-  incrementLocalUsage();
-}
-
-function incrementLocalUsage() {
-  const usage = getLocalUsage();
-  localStorage.setItem('rabona_local_usage', JSON.stringify({
-    count: usage.count + 1,
-    resetDate: usage.resetDate,
-  }));
-}
-
-function getLocalUsage(): { count: number; resetDate: string } {
-  if (typeof window === 'undefined') return { count: 0, resetDate: getNextMonthReset() };
-
-  const existing = localStorage.getItem('rabona_local_usage');
-  if (!existing) {
-    return { count: 0, resetDate: getNextMonthReset() };
-  }
-
-  const usage = JSON.parse(existing);
-
-  // Check if we need to reset (new month)
-  if (new Date() >= new Date(usage.resetDate)) {
-    const newUsage = { count: 0, resetDate: getNextMonthReset() };
-    localStorage.setItem('rabona_local_usage', JSON.stringify(newUsage));
-    return newUsage;
-  }
-
-  return usage;
-}
-
-function getNextMonthReset(): string {
-  const now = new Date();
-  // Reset on the 1st of next month
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 }
 
 export function getLocalNotes(): LocalNote[] {
@@ -102,27 +66,12 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
   const [copied, setCopied] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [localUsageCount, setLocalUsageCount] = useState(0);
   const [mode, setMode] = useState<'voice' | 'text'>('voice');
   const [textInput, setTextInput] = useState('');
-  const { openCheckout, isSubscribed, monthlyUsage, limit, hasFetchedOnce } = useSubscription();
+  const { openCheckout, isSubscribed } = useSubscription();
 
-  // Track local usage count for non-logged-in users (persists even if notes deleted)
-  const LOCAL_LIMIT = 5;
-  const isLocalLimitReached = !isLoggedIn && localUsageCount >= LOCAL_LIMIT;
-  const localUsageRemaining = LOCAL_LIMIT - localUsageCount;
-
-  // For logged-in free users, check server-side limit
-  const isFreeUser = isLoggedIn && !isSubscribed;
-  const freeUsageRemaining = limit - monthlyUsage;
-  const isServerLimitReached = isFreeUser && monthlyUsage >= limit;
-
-  // Update local usage count on mount
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setLocalUsageCount(getLocalUsage().count);
-    }
-  }, [isLoggedIn]);
+  // Hard paywall - must be subscribed to use
+  const canRecord = isLoggedIn && isSubscribed;
 
   const handleStartRecording = async () => {
     setError(null);
@@ -162,7 +111,6 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             processedText: response.data.processedText,
             createdAt: new Date().toISOString(),
           });
-          setLocalUsageCount(getLocalUsage().count);
         }
 
         onNoteCreated?.();
@@ -212,8 +160,6 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             processedText: response.data.processedText,
             createdAt: new Date().toISOString(),
           });
-          // Update local usage count
-          setLocalUsageCount(getLocalUsage().count);
         }
 
         onNoteCreated?.();
@@ -344,8 +290,8 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
 
           {/* Main Button */}
           <div className="relative">
-            {/* Limit reached state - for non-logged-in users OR logged-in free users at limit */}
-            {(isLocalLimitReached || isServerLimitReached) && !isRecording && !isProcessing && (
+            {/* Paywall state - must be subscribed */}
+            {!canRecord && !isRecording && !isProcessing && (
               <button
                 onClick={() => setShowUpgradeModal(true)}
                 className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -354,8 +300,8 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
               </button>
             )}
 
-            {/* Normal recording button - when under limit */}
-            {!isLocalLimitReached && !isServerLimitReached && !isRecording && !isProcessing && (
+            {/* Normal recording button - when subscribed */}
+            {canRecord && !isRecording && !isProcessing && (
               <button
                 onClick={handleStartRecording}
                 className="w-24 h-24 rounded-full bg-amber-500 hover:bg-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 transition-all hover:scale-105 active:scale-95"
@@ -382,32 +328,11 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
 
           {/* Status Text */}
           <p className="text-gray-500 dark:text-gray-400 font-serif italic">
-            {isLocalLimitReached && !isRecording && !isProcessing && 'Sign in to continue recording'}
-            {isServerLimitReached && !isRecording && !isProcessing && 'Monthly limit reached'}
-            {!isLocalLimitReached && !isServerLimitReached && !isRecording && !isProcessing && 'Tap to record'}
+            {!canRecord && !isRecording && !isProcessing && 'Subscribe to start recording'}
+            {canRecord && !isRecording && !isProcessing && 'Tap to record'}
             {isRecording && 'Tap to stop'}
             {isProcessing && 'Polishing...'}
           </p>
-
-          {/* Free tier usage indicator - for logged-in free users */}
-          {isFreeUser && hasFetchedOnce && !isRecording && !isProcessing && (
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              {freeUsageRemaining > 0
-                ? `${freeUsageRemaining} free recording${freeUsageRemaining !== 1 ? 's' : ''} remaining`
-                : <button onClick={() => setShowUpgradeModal(true)} className="text-amber-600 dark:text-amber-400 hover:underline">Upgrade to Pro</button>
-              }
-            </p>
-          )}
-
-          {/* Free tier usage indicator - for non-logged-in users */}
-          {!isLoggedIn && !isRecording && !isProcessing && (
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              {localUsageRemaining > 0
-                ? `${localUsageRemaining} free recording${localUsageRemaining !== 1 ? 's' : ''} remaining`
-                : 'Sign in for more recordings'
-              }
-            </p>
-          )}
         </>
       )}
 
@@ -418,39 +343,24 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder="Type or paste your text here..."
-            disabled={isLocalLimitReached || isServerLimitReached}
+            disabled={!canRecord}
             className="w-full h-32 p-4 rounded-xl bg-white dark:bg-[#2D2E30] border border-[#EDE4D9] dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             onClick={handleTextEnhance}
-            disabled={!textInput.trim() || isLocalLimitReached || isServerLimitReached}
+            disabled={!textInput.trim() || !canRecord}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white font-medium transition-colors disabled:cursor-not-allowed"
           >
             <Sparkles className="w-5 h-5" />
             Enhance Text
           </button>
-          {isLocalLimitReached && (
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Sign in to continue enhancing text
-            </p>
-          )}
-          {isServerLimitReached && (
+          {!canRecord && (
             <button
               onClick={() => setShowUpgradeModal(true)}
               className="w-full text-center text-sm text-amber-600 dark:text-amber-400 hover:underline"
             >
-              Upgrade to Pro for unlimited recordings
+              Subscribe to enhance text
             </button>
-          )}
-          {isFreeUser && hasFetchedOnce && !isServerLimitReached && (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500">
-              {freeUsageRemaining} free recording{freeUsageRemaining !== 1 ? 's' : ''} remaining
-            </p>
-          )}
-          {!isLoggedIn && !isLocalLimitReached && (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500">
-              {localUsageRemaining} free recording{localUsageRemaining !== 1 ? 's' : ''} remaining
-            </p>
           )}
         </div>
       )}
