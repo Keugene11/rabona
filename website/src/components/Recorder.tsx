@@ -73,6 +73,7 @@ export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
   // Track local note count for non-logged-in users
   const LOCAL_LIMIT = 5;
   const isLocalLimitReached = !isLoggedIn && localNoteCount >= LOCAL_LIMIT;
+  const localUsageRemaining = LOCAL_LIMIT - localNoteCount;
 
   // For logged-in free users, check server-side limit
   const isFreeUser = isLoggedIn && !isSubscribed;
@@ -351,12 +352,22 @@ export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
             {isProcessing && 'Polishing...'}
           </p>
 
-          {/* Free tier usage indicator */}
+          {/* Free tier usage indicator - for logged-in free users */}
           {isFreeUser && hasFetchedOnce && !isRecording && !isProcessing && (
             <p className="text-sm text-gray-400 dark:text-gray-500">
               {freeUsageRemaining > 0
                 ? `${freeUsageRemaining} free recording${freeUsageRemaining !== 1 ? 's' : ''} remaining`
                 : <button onClick={() => setShowUpgradeModal(true)} className="text-amber-600 dark:text-amber-400 hover:underline">Upgrade to Pro</button>
+              }
+            </p>
+          )}
+
+          {/* Free tier usage indicator - for non-logged-in users */}
+          {!isLoggedIn && !isRecording && !isProcessing && (
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              {localUsageRemaining > 0
+                ? `${localUsageRemaining} free recording${localUsageRemaining !== 1 ? 's' : ''} remaining`
+                : 'Sign in for more recordings'
               }
             </p>
           )}
@@ -397,6 +408,11 @@ export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
           {isFreeUser && hasFetchedOnce && !isServerLimitReached && (
             <p className="text-center text-sm text-gray-400 dark:text-gray-500">
               {freeUsageRemaining} free recording{freeUsageRemaining !== 1 ? 's' : ''} remaining
+            </p>
+          )}
+          {!isLoggedIn && !isLocalLimitReached && (
+            <p className="text-center text-sm text-gray-400 dark:text-gray-500">
+              {localUsageRemaining} free recording{localUsageRemaining !== 1 ? 's' : ''} remaining
             </p>
           )}
         </div>
