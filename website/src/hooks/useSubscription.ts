@@ -9,15 +9,39 @@ import {
   createPortalSession,
 } from '@/lib/api';
 
+const SUBSCRIPTION_CACHE_KEY = 'rabona_subscription_cache';
+
+function setCachedSubscription(status: SubscriptionStatus | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (status) {
+      localStorage.setItem(SUBSCRIPTION_CACHE_KEY, JSON.stringify(status));
+    } else {
+      localStorage.removeItem(SUBSCRIPTION_CACHE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function useSubscription() {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user, getToken } = useAuth();
+  const [statusForUserId, setStatusForUserId] = useState<string | null>(null);
+  const { user, loading: authLoading, getToken } = useAuth();
 
   const fetchStatus = useCallback(async () => {
+    // Don't do anything while auth is still loading
+    if (authLoading) {
+      return;
+    }
+
+    // User is logged out (auth finished loading and no user)
     if (!user) {
       setStatus(null);
+      setCachedSubscription(null);
       setLoading(false);
+      setStatusForUserId(null);
       return;
     }
 
@@ -26,13 +50,15 @@ export function useSubscription() {
       if (token) {
         const subscriptionStatus = await getSubscriptionStatus(token);
         setStatus(subscriptionStatus);
+        setCachedSubscription(subscriptionStatus);
+        setStatusForUserId(user.uid); // Mark that we have status for this user
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
     } finally {
       setLoading(false);
     }
-  }, [user, getToken]);
+  }, [user, authLoading, getToken]);
 
   useEffect(() => {
     fetchStatus();
@@ -76,32 +102,21 @@ export function useSubscription() {
     }
   };
 
-  // Cache the last known subscription status in localStorage to prevent flickering
-  useEffect(() => {
-    if (status && user) {
-      localStorage.setItem(`rabona_sub_${user.uid}`, JSON.stringify(status));
-    }
-  }, [status, user]);
+  // Only consider status valid if it's for the current user
+  // This prevents showing stale status (like 0/5) when user changes
+  const hasValidStatus = user !== null && statusForUserId === user.uid;
 
-  // Get cached status while loading
-  const getCachedStatus = (): SubscriptionStatus | null => {
-    if (typeof window === 'undefined' || !user) return null;
-    try {
-      const cached = localStorage.getItem(`rabona_sub_${user.uid}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const effectiveStatus = status || (loading ? getCachedStatus() : null);
+  // Only return isSubscribed: true if we have valid status confirming subscription
+  // This ensures we never show wrong state due to timing issues
+  const isSubscribed = hasValidStatus && status?.isSubscribed === true;
 
   return {
-    status: effectiveStatus,
+    status,
     loading,
-    isSubscribed: effectiveStatus?.isSubscribed ?? false,
-    monthlyUsage: effectiveStatus?.monthlyUsage ?? 0,
-    limit: effectiveStatus?.limit ?? 5,
+    hasFetchedOnce: hasValidStatus,
+    isSubscribed,
+    monthlyUsage: hasValidStatus ? (status?.monthlyUsage ?? 0) : 0,
+    limit: hasValidStatus ? (status?.limit ?? 5) : 5,
     openCheckout,
     openPortal,
     refresh: fetchStatus,

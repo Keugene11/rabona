@@ -8,6 +8,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 
 interface RecorderProps {
   token?: string | null;
+  isLoggedIn?: boolean;
   onNoteCreated?: () => void;
 }
 
@@ -49,7 +50,7 @@ export function updateLocalNote(id: string, updates: { processedText?: string })
   localStorage.setItem('rabona_local_notes', JSON.stringify(notes));
 }
 
-export function Recorder({ token, onNoteCreated }: RecorderProps) {
+export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
   const {
     isRecording,
     duration,
@@ -71,14 +72,14 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
 
   // Track local note count for non-logged-in users
   const LOCAL_LIMIT = 5;
-  const isLocalLimitReached = !token && localNoteCount >= LOCAL_LIMIT;
+  const isLocalLimitReached = !isLoggedIn && localNoteCount >= LOCAL_LIMIT;
 
   // Update local note count on mount and when notes change
   useEffect(() => {
-    if (!token) {
+    if (!isLoggedIn) {
       setLocalNoteCount(getLocalNotes().length);
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   const handleStartRecording = async () => {
     setError(null);
@@ -377,13 +378,6 @@ export function Recorder({ token, onNoteCreated }: RecorderProps) {
           </div>
           <p className="text-gray-500 dark:text-gray-400 font-serif italic">Enhancing...</p>
         </div>
-      )}
-
-      {/* Local limit info for non-logged-in users */}
-      {!token && !isRecording && !isProcessing && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          {localNoteCount}/{LOCAL_LIMIT} free uses remaining
-        </p>
       )}
 
       {/* Error Display */}

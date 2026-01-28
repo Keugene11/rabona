@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { User, Sun, Moon, Search, X, Sparkles, HelpCircle } from 'lucide-react';
+import { User, Sun, Moon, Search, X, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -15,7 +15,7 @@ import { AuthModal } from '@/components/AuthModal';
 function HomeContent() {
   const { user, loading, getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { isSubscribed, monthlyUsage, limit, refresh: refreshSubscription } = useSubscription();
+  const { refresh: refreshSubscription } = useSubscription();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -102,25 +102,6 @@ function HomeContent() {
               Pricing
             </Link>
 
-            {/* Usage counter for logged-in free users */}
-            {user && !isSubscribed && (
-              <Link
-                href="/pricing"
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <span>{monthlyUsage}/{limit}</span>
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400 font-medium">Upgrade</span>
-              </Link>
-            )}
-
-            {/* Pro badge for subscribers */}
-            {user && isSubscribed && (
-              <span className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30">
-                <Sparkles className="w-4 h-4" />
-                Pro
-              </span>
-            )}
 
             <button
               onClick={toggleTheme}
@@ -152,7 +133,7 @@ function HomeContent() {
       <main className="px-4 sm:px-6 lg:px-10 py-6">
         {/* Recorder */}
         <div className="max-w-xl mx-auto mb-8">
-          <Recorder token={token} onNoteCreated={handleNoteCreated} />
+          <Recorder token={token} isLoggedIn={!!user} onNoteCreated={handleNoteCreated} />
         </div>
 
         {/* Tutorial Video for non-logged-in users */}
