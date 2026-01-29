@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Mic, Square, Loader2, Copy, Check, RotateCcw, ChevronDown, ChevronUp, Sparkles, X, Type, Send } from 'lucide-react';
+import { useState } from 'react';
+import { Mic, Square, Loader2, Copy, Check, RotateCcw, ChevronDown, ChevronUp, Sparkles, X, Type } from 'lucide-react';
 import { useRecorder } from '@/hooks/useRecorder';
 import { transcribeAudio, enhanceText, saveNote } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -51,7 +51,7 @@ export function updateLocalNote(id: string, updates: { processedText?: string })
   localStorage.setItem('rabona_local_notes', JSON.stringify(notes));
 }
 
-export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: RecorderProps) {
+export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
   const {
     isRecording,
     duration,
@@ -68,10 +68,10 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [mode, setMode] = useState<'voice' | 'text'>('voice');
   const [textInput, setTextInput] = useState('');
-  const { openCheckout, isSubscribed } = useSubscription();
+  const { openCheckout } = useSubscription();
 
-  // Hard paywall - must be subscribed to use
-  const canRecord = isLoggedIn && isSubscribed;
+  // Must be signed in to use
+  const canRecord = isLoggedIn;
 
   const handleStartRecording = async () => {
     setError(null);
@@ -290,14 +290,11 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
 
           {/* Main Button */}
           <div className="relative">
-            {/* Paywall state - must be subscribed */}
+            {/* Must be signed in */}
             {!canRecord && !isRecording && !isProcessing && (
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
+              <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                 <Mic className="w-10 h-10 text-gray-400 dark:text-gray-500" />
-              </button>
+              </div>
             )}
 
             {/* Normal recording button - when subscribed */}
@@ -328,7 +325,7 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
 
           {/* Status Text */}
           <p className="text-gray-500 dark:text-gray-400 font-serif italic">
-            {!canRecord && !isRecording && !isProcessing && 'Subscribe to start recording'}
+            {!canRecord && !isRecording && !isProcessing && 'Sign in to start recording'}
             {canRecord && !isRecording && !isProcessing && 'Tap to record'}
             {isRecording && 'Tap to stop'}
             {isProcessing && 'Polishing...'}
@@ -355,12 +352,9 @@ export function Recorder({ token, isLoggedIn, onNoteCreated, refreshTrigger }: R
             Enhance Text
           </button>
           {!canRecord && (
-            <button
-              onClick={() => setShowUpgradeModal(true)}
-              className="w-full text-center text-sm text-amber-600 dark:text-amber-400 hover:underline"
-            >
-              Subscribe to enhance text
-            </button>
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Sign in to enhance text
+            </p>
           )}
         </div>
       )}
