@@ -97,7 +97,7 @@ function HomeContent() {
             {/* Pricing link - always visible */}
             <Link
               href="/pricing"
-              className="hidden sm:flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+              className="flex items-center gap-1 px-2 sm:px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
             >
               Pricing
             </Link>
