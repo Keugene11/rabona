@@ -25,7 +25,7 @@ const tiers = [
   },
   {
     name: 'Pro',
-    price: '$5',
+    price: '$4',
     period: '/month',
     description: 'For regular users who need more',
     features: [
@@ -42,7 +42,7 @@ const tiers = [
   },
   {
     name: 'Lifetime',
-    price: '$10',
+    price: '$6',
     period: 'one-time',
     description: 'Best value - pay once, use forever',
     features: [

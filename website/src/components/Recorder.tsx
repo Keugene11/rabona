@@ -425,7 +425,7 @@ export function Recorder({ token, isLoggedIn, onNoteCreated }: RecorderProps) {
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-gray-900 dark:text-gray-100">Rabona Pro</span>
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold">$5/month</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">$4/month</span>
                 </div>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 text-left">
                   <li>• Unlimited recordings</li>
