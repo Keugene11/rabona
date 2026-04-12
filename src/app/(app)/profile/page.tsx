@@ -355,7 +355,22 @@ export default function ProfilePage() {
         {/* LEFT — details */}
         <div className={`md:w-[380px] md:flex-shrink-0 md:sticky md:top-4 space-y-3 ${activeTab === 'info' ? 'block' : 'hidden'} md:block`}>
 
-          {/* Avatar & Name */}
+          {/* Name & subtitle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
+              <p className="text-[13px] text-text-muted mt-0.5">
+                {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
+                {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
+              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={18} /></button>
+            </div>
+          </div>
+
+          {/* Avatar */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-4">
             <label className="relative cursor-pointer press block w-full">
               <div className="w-full aspect-square rounded-xl bg-bg-input border border-border overflow-hidden">
@@ -364,15 +379,6 @@ export default function ProfilePage() {
               <div className="absolute bottom-3 right-3 bg-accent text-white rounded-xl p-2"><Camera size={16} /></div>
               <input type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
             </label>
-            <h1 className="text-[22px] font-bold tracking-tight mt-3 cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
-            <p className="text-[13px] text-text-muted mt-0.5">
-              {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
-              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={18} /></button>
-            </div>
           </div>
 
           {/* Profile Views */}
