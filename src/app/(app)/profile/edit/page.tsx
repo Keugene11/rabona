@@ -278,6 +278,29 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {/* Greek Life & Clubs */}
+          <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
+            <p className="text-[13px] font-semibold">Organizations</p>
+            {(uniData?.GREEK_LIFE || []).length > 0 && (
+              <div>
+                <label className={labelClass}>Greek Life</label>
+                <select value={profile.fraternity_sorority || ''} onChange={(e) => updateField('fraternity_sorority', e.target.value)} className={selectClass}>
+                  <option value="">None</option>
+                  {(uniData?.GREEK_LIFE || []).map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            )}
+            {(uniData?.CLUBS || []).length > 0 && (
+              <div>
+                <label className={labelClass}>Club</label>
+                <select value={profile.clubs || ''} onChange={(e) => updateField('clubs', e.target.value)} className={selectClass}>
+                  <option value="">None</option>
+                  {(uniData?.CLUBS || []).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
           {/* Personal */}
           <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
             <p className="text-[13px] font-semibold">Personal</p>

@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { Send, Trash2, Pencil, Check, X, Heart } from 'lucide-react'
 import type { Comment } from '@/types'
 import { notifyFriends } from '@/lib/notifyFriends'
+import MentionInput, { extractMentionIds } from '@/components/MentionInput'
+import MentionText from '@/components/MentionText'
 
 interface CommentsProps {
   postType: 'wall_post' | 'group_post'
@@ -117,8 +119,22 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
       })
     }
 
+    // Notify mentioned users
+    const mentionedIds = extractMentionIds(text).filter(id => id !== userId)
+    for (const mentionedId of mentionedIds) {
+      await supabase.from('notifications').insert({
+        user_id: mentionedId,
+        actor_id: userId,
+        type: 'mention',
+        post_type: postType,
+        post_id: postId,
+        comment_id: newComment?.id,
+        content: text.slice(0, 100),
+      })
+    }
+
     // Notify friends (exclude people who already got a direct notification)
-    const exclude: string[] = []
+    const exclude: string[] = [...mentionedIds]
     if (parentId) {
       const parent = comments.find(c => c.id === parentId) || comments.flatMap(c => c.replies || []).find(c => c.id === parentId)
       if (parent && parent.author_id !== userId) exclude.push(parent.author_id)
@@ -208,13 +224,12 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
 
               {replyTo === c.id && (
                 <div className="ml-6 mt-1.5 flex gap-2">
-                  <input
-                    type="text"
+                  <MentionInput
                     value={replyInput}
-                    onChange={(e) => setReplyInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handlePost(c.id) }}
+                    onChange={setReplyInput}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.defaultPrevented) handlePost(c.id) }}
                     maxLength={2000}
-                    placeholder="Write a reply..."
+                    placeholder="Write a reply... (@ to mention)"
                     className="flex-1 bg-bg-input rounded-lg px-3 py-1.5 text-[12px] outline-none placeholder:text-text-muted/50"
                     autoFocus
                   />
@@ -232,13 +247,12 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
 
           {canComment ? (
             <div className="flex gap-2">
-              <input
-                type="text"
+              <MentionInput
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handlePost(null) }}
+                onChange={setInput}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.defaultPrevented) handlePost(null) }}
                 maxLength={2000}
-                placeholder="Write a comment..."
+                placeholder="Write a comment... (@ to mention)"
                 className="flex-1 bg-bg-input rounded-lg px-3 py-1.5 text-[12px] outline-none placeholder:text-text-muted/50"
               />
               <button
@@ -315,7 +329,7 @@ function CommentItem({ comment, userId, onDelete, onEdit, onReply, liked, likeCo
               <Link href={`/profile/${comment.author_id}`} className="text-[12px] font-semibold hover:underline">
                 {comment.author?.full_name || 'Unknown'}
               </Link>
-              <p className="text-[12px]">{comment.content}</p>
+              <p className="text-[12px]"><MentionText text={comment.content} /></p>
             </div>
             <div className="flex items-center gap-3 mt-0.5 px-1">
               <span className="text-[10px] text-text-muted">{getTimeAgo(new Date(comment.created_at))}</span>

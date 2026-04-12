@@ -8,6 +8,7 @@ import type { WallPost } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
+import MentionText from '@/components/MentionText'
 
 interface WallPostItemProps {
   post: WallPost
@@ -102,7 +103,7 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
         </div>
       ) : (
         <>
-          {content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap">{content}</p>}
+          {content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap"><MentionText text={content} /></p>}
           {post.media_url && (
             <div className="mt-2.5">
               {isVideo(post.media_url) ? (

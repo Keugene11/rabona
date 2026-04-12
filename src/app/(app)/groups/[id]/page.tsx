@@ -8,6 +8,8 @@ import type { Group, GroupMember, GroupPost, Profile } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
+import MentionText from '@/components/MentionText'
+import MentionInput, { extractMentionIds } from '@/components/MentionInput'
 import ImageCropper from '@/components/ImageCropper'
 import { notifyFriends } from '@/lib/notifyFriends'
 
@@ -134,6 +136,18 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       setPosts([data as (GroupPost & { author: Profile }), ...posts])
       setPostContent('')
       setMediaFile(null)
+      // Notify mentioned users
+      const mentionedIds = extractMentionIds(postContent).filter(mid => mid !== currentUserId)
+      for (const mentionedId of mentionedIds) {
+        await supabase.from('notifications').insert({
+          user_id: mentionedId,
+          actor_id: currentUserId,
+          type: 'mention',
+          post_type: 'group_post',
+          post_id: data.id,
+          content: postContent.trim().slice(0, 100),
+        })
+      }
       // Notify friends
       notifyFriends(supabase, currentUserId, 'friend_post', {
         post_type: 'group_post',
@@ -287,12 +301,13 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
           {isMember && (
             <form onSubmit={handlePost} className="bg-bg-card border border-border rounded-2xl p-3 mb-4">
-              <textarea
+              <MentionInput
                 value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
+                onChange={setPostContent}
                 maxLength={2000}
-                placeholder="Write something to the group..."
-                className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none resize-none h-16"
+                placeholder="Write something to the group... (@ to mention)"
+                className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none h-16"
+                multiline
               />
               {mediaPreview && (
                 <div className="relative mb-2 inline-block">
@@ -393,7 +408,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   ) : (
                     <>
-                      {post.content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap">{post.content}</p>}
+                      {post.content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap"><MentionText text={post.content} /></p>}
                       {post.media_url && (
                         <div className="mt-2.5">
                           {/\.(mp4|webm|mov|avi)$/i.test(post.media_url) ? (

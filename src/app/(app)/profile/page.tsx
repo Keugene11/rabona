@@ -186,6 +186,8 @@ export default function ProfilePage() {
       interested_in: { label: 'Interested In', type: 'select', options: INTERESTED_IN.map(s => ({ value: s, label: s })) },
       looking_for: { label: 'Looking For', type: 'select', options: LOOKING_FOR.map(s => ({ value: s, label: s })) },
       political_views: { label: 'Political Views', type: 'select', options: POLITICAL_VIEWS.map(p => ({ value: p, label: p })) },
+      fraternity_sorority: { label: 'Greek Life', type: 'select', options: (uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g })) },
+      clubs: { label: 'Club', type: 'select', options: (uniData?.CLUBS || []).map(c => ({ value: c, label: c })) },
       email: { label: 'Email', type: 'text' },
       phone: { label: 'Phone', type: 'tel' },
       websites: { label: 'Website', type: 'text' },
@@ -419,6 +421,8 @@ export default function ProfilePage() {
             <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
             <EditableRow icon={GraduationCap} label="Gender" field="gender" value={profile.gender} options={GENDERS.map(g => ({ value: g, label: g }))} />
+            {(uniData?.GREEK_LIFE || []).length > 0 && <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />}
+            {(uniData?.CLUBS || []).length > 0 && <EditableRow icon={Users} label="Club" field="clubs" value={profile.clubs} options={(uniData?.CLUBS || []).map(c => ({ value: c, label: c }))} />}
           </div>
 
           {/* Personal */}

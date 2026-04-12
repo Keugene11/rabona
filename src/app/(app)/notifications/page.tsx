@@ -233,6 +233,7 @@ export default function NotificationsPage() {
     if (type === 'friend_post') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'mention') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     return null
   }
 
@@ -248,6 +249,7 @@ export default function NotificationsPage() {
     if (type === 'friend_post') return 'made a post'
     if (type === 'friend_comment') return 'commented on a post'
     if (type === 'friend_like') return 'liked a post'
+    if (type === 'mention') return 'mentioned you'
     return ''
   }
 
@@ -309,7 +311,7 @@ export default function NotificationsPage() {
                       &ldquo;{n.post_content}&rdquo;
                     </p>
                   )}
-                  {n.content && (n.type === 'friend_post' || n.type === 'friend_comment') && (
+                  {n.content && (n.type === 'friend_post' || n.type === 'friend_comment' || n.type === 'mention') && (
                     <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-2">
                       &ldquo;{n.content}&rdquo;
                     </p>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2 } from 'lucide-react'
+import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost, Group } from '@/types'
@@ -425,6 +425,8 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             {show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Interested in:</span> <span>{profile.interested_in}</span></div>}
             {show('looking_for', profile.looking_for) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Looking for:</span> <span>{profile.looking_for}</span></div>}
             {show('political_views', profile.political_views) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Globe size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Political Views:</span> <span>{profile.political_views}</span></div>}
+            {show('fraternity_sorority', profile.fraternity_sorority) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Greek Life:</span> <span>{profile.fraternity_sorority}</span></div>}
+            {show('clubs', profile.clubs) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Club:</span> <span>{profile.clubs}</span></div>}
           </div>
           )}
 
