@@ -274,6 +274,7 @@ export const CORNELL_CLUBS = [
   'Cornell Tech Club',
   'Cornell Think Tank',
   'Cornell University Sustainable Design',
+  'Cornell Quant Fund',
   'Cornell Venture Capital',
   'Cornell Women in Business',
   'Cornell Women in Computing',

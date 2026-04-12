@@ -410,23 +410,35 @@ export default function ProfilePage() {
             <p className={`text-[13px] cursor-pointer ${profile.about_me ? 'hover:underline' : empty}`}>{profile.about_me || 'Click to add...'}</p>
           </div>
 
-          {/* Details */}
+          {/* Academics */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Academics</p>
             <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} options={(uniData?.MINORS || []).map(m => ({ value: m, label: m }))} />
-            {resHalls.length > 0 && <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />}
+            <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
+          </div>
+
+          {/* Living */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Living</p>
+            <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />
             <EditableRow icon={Home} label="From" field="hometown" value={profile.hometown} />
             <EditableRow icon={School} label="High School" field="high_school" value={profile.high_school} />
-            <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
-            <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
-            <EditableRow icon={GraduationCap} label="Gender" field="gender" value={profile.gender} options={GENDERS.map(g => ({ value: g, label: g }))} />
-            {(uniData?.GREEK_LIFE || []).length > 0 && <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />}
-            {(uniData?.CLUBS || []).length > 0 && <EditableRow icon={Users} label="Club" field="clubs" value={profile.clubs} options={(uniData?.CLUBS || []).map(c => ({ value: c, label: c }))} />}
+          </div>
+
+          {/* Organizations */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Organizations</p>
+            <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
+            <EditableRow icon={Users} label="Club" field="clubs" value={profile.clubs} options={(uniData?.CLUBS || []).map(c => ({ value: c, label: c }))} />
           </div>
 
           {/* Personal */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Personal</p>
+            <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
+            <EditableRow icon={GraduationCap} label="Gender" field="gender" value={profile.gender} options={GENDERS.map(g => ({ value: g, label: g }))} />
             <EditableRow icon={Heart} label="Status" field="relationship_status" value={profile.relationship_status} options={RELATIONSHIP_STATUSES.map(s => ({ value: s, label: s }))} />
             <EditableRow icon={Heart} label="Interested In" field="interested_in" value={profile.interested_in} options={INTERESTED_IN.map(s => ({ value: s, label: s }))} />
             <EditableRow icon={Heart} label="Looking For" field="looking_for" value={profile.looking_for} options={LOOKING_FOR.map(s => ({ value: s, label: s }))} />
@@ -435,11 +447,11 @@ export default function ProfilePage() {
 
           {/* Contact */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <div className="flex items-center gap-2.5 py-2.5">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Contact</p>
+            <div className="flex items-center gap-2.5 py-1">
               <Mail size={14} className="text-text-muted flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium">Email</p>
-                <p className="text-[14px] text-accent break-all">{profile.email}</p>
+                <span className="text-[14px] text-accent break-all">{profile.email}</span>
               </div>
             </div>
             <EditableRow icon={Phone} label="Phone" field="phone" value={profile.phone} type="tel" />
