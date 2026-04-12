@@ -179,7 +179,6 @@ export default function MentionInput({
     onKeyDown: handleKeyDown,
     placeholder,
     maxLength,
-    className,
     autoFocus,
   }
 
@@ -189,13 +188,14 @@ export default function MentionInput({
         <textarea
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
           {...sharedProps}
-          className={`${className} resize-none overflow-hidden`}
+          className={`w-full ${className} resize-none overflow-hidden`}
         />
       ) : (
         <input
           type="text"
           ref={inputRef as React.RefObject<HTMLInputElement>}
           {...sharedProps}
+          className={`w-full ${className}`}
         />
       )}
 
