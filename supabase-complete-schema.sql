@@ -16,7 +16,7 @@ CREATE TABLE public.groups (
   group_type text NOT NULL DEFAULT 'open',
   created_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
-  university text DEFAULT 'rabona'
+  university text DEFAULT 'cornell'
 );
 CREATE INDEX idx_groups_university ON groups(university);
 

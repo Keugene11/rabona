@@ -65,7 +65,7 @@ export default function PrivacySettingsPage() {
         if (data.private_fields) {
           setPrivateFields(data.private_fields.split(',').filter(Boolean))
         }
-        const ud = await getUniversityData(data.university || 'rabona')
+        const ud = await getUniversityData(data.university || 'cornell')
         setPrivacyFields(buildPrivacyFields(
           ud.MAJORS,
           ud.MINORS,

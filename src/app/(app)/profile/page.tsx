@@ -42,7 +42,7 @@ export default function ProfilePage() {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) {
       setProfile(data as Profile)
-      const ud = await getUniversityData(data.university || 'rabona')
+      const ud = await getUniversityData(data.university || 'cornell')
       setUniData(ud)
     }
     const { data: posts } = await supabase.from('wall_posts').select('*, author:profiles!wall_posts_author_id_fkey(*)').eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)

@@ -68,7 +68,7 @@ export default function DirectoryPage() {
 
       // Get current user's university to filter directory
       const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-      const myUniversity = myProfile?.university || 'rabona'
+      const myUniversity = myProfile?.university || 'cornell'
       const ud = await getUniversityData(myUniversity)
       setUniData(ud)
       setUniName(getUniversityBySlug(myUniversity)?.name || '')

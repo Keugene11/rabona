@@ -34,7 +34,7 @@ export default function GroupsPage() {
 
     // Get current user's university
     const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-    const myUniversity = myProfile?.university || 'rabona'
+    const myUniversity = myProfile?.university || 'cornell'
 
     // Get all groups for this university
     const { data: groups } = await supabase

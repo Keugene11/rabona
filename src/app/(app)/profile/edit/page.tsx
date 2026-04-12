@@ -38,7 +38,7 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data as Profile)
       setAvatarUrl(data.avatar_url || '')
-      const ud = await getUniversityData(data.university || 'rabona')
+      const ud = await getUniversityData(data.university || 'cornell')
       setUniData(ud)
     }
 

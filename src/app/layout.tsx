@@ -4,7 +4,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Rabona",
-  description: "A social network for you and your friends",
+  description: "A social network for Cornell University students",
 };
 
 export const viewport: Viewport = {

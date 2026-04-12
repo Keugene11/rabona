@@ -24,7 +24,7 @@ create table public.profiles (
   notif_wall_posts boolean default true,
   notif_likes boolean default true,
   notif_comments boolean default true,
-  university text default 'rabona',
+  university text default 'cornell',
   messages_from text default 'everyone',
   created_at timestamptz default now(),
   updated_at timestamptz default now()

@@ -18,7 +18,7 @@ export default function TermsPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">2. Eligibility</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          Rabona is available to anyone with a Google account. By signing up, you agree to use the service responsibly.
+          Rabona is available only to current Cornell University students with a valid @cornell.edu email address. By signing up, you confirm that you are a Cornell University student.
         </p>
       </section>
 

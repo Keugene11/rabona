@@ -6,13 +6,13 @@ export default function AboutPage() {
     <div className="max-w-2xl mx-auto px-5 pt-16 pb-20">
       <div className="text-center mb-12">
         <h1 className="text-[32px] font-extrabold tracking-tight">[ Rabona ]</h1>
-        <p className="text-[16px] text-text-muted mt-2">A social network for you and your friends</p>
+        <p className="text-[16px] text-text-muted mt-2">A social network for Cornell students</p>
       </div>
 
       <section className="mb-10">
         <h2 className="text-[20px] font-bold mb-3">What is Rabona?</h2>
         <p className="text-[15px] text-text-muted leading-relaxed">
-          Rabona is a social network for you and your friends. Write short updates and posts for your friends to read and like, connect with people you know, join and make groups, and message your friends. Sign in with your Google account to get started.
+          Rabona is a social network built exclusively for Cornell University students. Write short updates and posts for your friends to read and like, connect with other students at Cornell, join and make groups, and message your classmates. You must sign in with your Cornell email address to join.
         </p>
       </section>
 
@@ -22,8 +22,8 @@ export default function AboutPage() {
           <div className="bg-bg-card border border-border rounded-2xl p-4 flex gap-4">
             <Search size={20} className="text-accent flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-[15px] font-semibold mb-1">Directory</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Browse everyone on Rabona. Filter by interests and more to find people you know or want to meet.</p>
+              <h3 className="text-[15px] font-semibold mb-1">Student Directory</h3>
+              <p className="text-[13px] text-text-muted leading-relaxed">Browse every student at Cornell. Filter by major, class year, hometown, and more to find people you know or want to meet.</p>
             </div>
           </div>
 
@@ -63,7 +63,7 @@ export default function AboutPage() {
             <MessageCircle size={20} className="text-accent flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-[15px] font-semibold mb-1">Direct Messages</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Send private messages to anyone. Start a conversation from their profile page.</p>
+              <p className="text-[13px] text-text-muted leading-relaxed">Send private messages to any student. Start a conversation from their profile page.</p>
             </div>
           </div>
 
@@ -95,7 +95,7 @@ export default function AboutPage() {
             <Shield size={20} className="text-accent flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-[15px] font-semibold mb-1">Privacy & Safety</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Control exactly which profile fields are visible to others. Block and report users who violate community standards.</p>
+              <p className="text-[13px] text-text-muted leading-relaxed">Control exactly which profile fields are visible to others. Block and report users who violate community standards. Only verified Cornell emails can join.</p>
             </div>
           </div>
         </div>
@@ -106,15 +106,15 @@ export default function AboutPage() {
         <ol className="space-y-3">
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">1</span>
-            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Sign in</span> with your Google account.</p>
+            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Sign in</span> with your Cornell email address.</p>
           </li>
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">2</span>
-            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Set up your profile</span> — add your name, interests, and a profile picture.</p>
+            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Set up your profile</span> — add your name, major, class year, and a profile picture.</p>
           </li>
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">3</span>
-            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Find people</span> — use the directory to find your friends.</p>
+            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Find people</span> — use the directory to find students at Cornell.</p>
           </li>
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">4</span>

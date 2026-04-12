@@ -5,29 +5,29 @@ export interface University {
   emailDomain: string
 }
 
-// No university restriction — open to everyone
 export const UNIVERSITY: University = {
-  slug: 'rabona',
-  name: 'Rabona',
-  shortName: 'Rabona',
-  emailDomain: '',
+  slug: 'cornell',
+  name: 'Cornell University',
+  shortName: 'Cornell',
+  emailDomain: 'cornell.edu',
 }
 
 export const UNIVERSITIES: University[] = [UNIVERSITY]
 
-export const APPROVED_DOMAINS: string[] = []
+export const APPROVED_DOMAINS = [UNIVERSITY.emailDomain]
 
 export function getUniversityByEmail(email: string): University | null {
-  // No domain restriction — all emails are welcome
-  if (!email) return null
-  return UNIVERSITY
+  const domain = email.split('@')[1]?.toLowerCase()
+  if (!domain) return null
+  return domain === UNIVERSITY.emailDomain ? UNIVERSITY : null
 }
 
 export function getUniversityBySlug(slug: string): University | null {
-  return UNIVERSITY
+  return slug === UNIVERSITY.slug ? UNIVERSITY : null
 }
 
 export function isApprovedEmail(email: string): boolean {
-  // All emails are approved
-  return !!email
+  const domain = email.split('@')[1]?.toLowerCase()
+  if (!domain) return false
+  return APPROVED_DOMAINS.includes(domain)
 }

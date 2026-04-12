@@ -56,7 +56,7 @@ export default function CreateGroupPage() {
         group_type: groupType,
         created_by: user.id,
         image_url,
-        university: myProfile?.university || 'rabona',
+        university: myProfile?.university || 'cornell',
       })
       .select()
       .single()

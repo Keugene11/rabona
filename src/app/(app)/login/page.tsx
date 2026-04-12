@@ -53,7 +53,7 @@ export default function LoginPage() {
 
         <ul className="text-[13px] text-text-muted mt-5 text-left space-y-2 list-disc pl-5">
           <li>Write short updates and posts for your friends to read and like</li>
-          <li>Connect with your friends</li>
+          <li>Connect with other students at Cornell</li>
           <li>Join and make groups</li>
         </ul>
 
@@ -77,7 +77,10 @@ export default function LoginPage() {
           {loading ? 'Signing in...' : 'Continue with Google'}
         </button>
 
-        <p className="text-[12px] text-text-muted mt-5">
+        <p className="text-[18px] font-semibold text-text mt-5">
+          You must sign in with your Cornell email address.
+        </p>
+        <p className="text-[12px] text-text-muted mt-2">
           <Link href="/about" className="text-accent press">Learn more</Link>
         </p>
       </div>

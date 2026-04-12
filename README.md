@@ -1,16 +1,16 @@
 # Rabona
 
-A social network for you and your friends. Think early Facebook — profiles, wall posts, friends, pokes, and messaging.
+A social network for Cornell University students. Think early Facebook — profiles, wall posts, friends, pokes, and messaging — built exclusively for the Cornell community.
 
 ## Features
 
-- **Google OAuth** — Sign in with your Google account
+- **Google OAuth** — Sign in with your @cornell.edu email
 - **Profiles** — Class year, major, courses, residence hall, interests, favorites, and more
 - **Wall Posts** — Post on friends' walls with likes and comments
 - **Friends** — Send/accept friend requests, browse your network
 - **Pokes** — Poke your friends
 - **Messaging** — Direct conversations between users
-- **Directory** — Search and discover other people
+- **Directory** — Search and discover other students
 - **Privacy Controls** — Choose which profile fields are visible to others
 
 ## Tech Stack

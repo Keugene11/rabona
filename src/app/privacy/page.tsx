@@ -53,7 +53,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">7. Eligibility</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          Rabona is available to anyone with a Google account.
+          Rabona is available only to Cornell University students with a valid @cornell.edu email address.
         </p>
       </section>
 
