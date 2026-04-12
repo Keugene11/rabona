@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, LogOut, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft } from 'lucide-react'
+import { Loader2, LogOut, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft, Pencil } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import WallPostForm from '@/components/WallPostForm'
@@ -358,7 +358,10 @@ export default function ProfilePage() {
           {/* Name & subtitle */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
+              <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline flex items-center gap-2" onClick={() => setEditing('full_name')}>
+                {profile.full_name || 'Click to set name'}
+                <Pencil size={14} className="text-text-muted" />
+              </h1>
               <p className="text-[13px] text-text-muted mt-0.5">
                 {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
                 {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
