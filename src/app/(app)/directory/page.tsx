@@ -110,8 +110,13 @@ export default function DirectoryPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
-      <h1 className="text-[24px] font-bold tracking-tight">Directory</h1>
-      {uniName && <p className="text-[13px] text-text-muted mb-4">{uniName}</p>}
+      <div className="flex items-center gap-3 mb-4">
+        <img src="/cornell-bear.svg" alt="Cornell Big Red" className="w-10 h-10" />
+        <div>
+          <h1 className="text-[24px] font-bold tracking-tight">Directory</h1>
+          {uniName && <p className="text-[13px] text-text-muted">{uniName}</p>}
+        </div>
+      </div>
 
       <DirectoryFilters
         filters={filters}
