@@ -1,8 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { isApprovedEmail } from '@/lib/universities'
-
 const GOOGLE_CLIENT_ID = '372750643272-3ab0ptudlj2s8vofsbumj7n5jiaa060e.apps.googleusercontent.com'
 
 export async function POST(request: Request) {
@@ -62,18 +60,6 @@ export async function POST(request: Request) {
     }
 
     const { data: { user } } = await supabase.auth.getUser()
-    const ALLOWED_EMAILS = ['keugenelee11@gmail.com', 'keugenelee9@gmail.com']
-    if (user && !isApprovedEmail(user.email || '') && !ALLOWED_EMAILS.includes(user.email || '')) {
-      await supabase.from('profiles').delete().eq('id', user.id)
-      const { createClient } = await import('@supabase/supabase-js')
-      const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-      await admin.auth.admin.deleteUser(user.id)
-      await supabase.auth.signOut()
-      return NextResponse.json(
-        { error: 'You must use an approved university email address' },
-        { status: 403 }
-      )
-    }
 
     // Mark onboarding as complete
     if (user) {
