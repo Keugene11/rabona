@@ -311,7 +311,7 @@ max_frequency = "5s"
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.google]
 enabled = true
-client_id = "372750643272-3ab0ptudlj2s8vofsbumj7n5jiaa060e.apps.googleusercontent.com"
+client_id = "385342744199-occekpb40kb9r4a21oojsfta0t14etbi.apps.googleusercontent.com"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = ""
 url = ""

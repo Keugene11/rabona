@@ -68,7 +68,7 @@ export default function TermsPage() {
         <h2 className="text-[18px] font-bold mb-2">9. Contact</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
           If you have questions about these terms, contact us at{' '}
-          <a href="mailto:keugenelee11@gmail.com" className="text-accent">keugenelee11@gmail.com</a>.
+          <a href="mailto:rabona591@gmail.com" className="text-accent">rabona591@gmail.com</a>.
         </p>
       </section>
 

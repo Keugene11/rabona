@@ -130,7 +130,7 @@ export default function AboutPage() {
       <section className="mb-10">
         <h2 className="text-[20px] font-bold mb-3">Questions?</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          Reach out to <a href="mailto:keugenelee11@gmail.com" className="text-accent">keugenelee11@gmail.com</a> for support, feedback, or bug reports.
+          Reach out to <a href="mailto:rabona591@gmail.com" className="text-accent">rabona591@gmail.com</a> for support, feedback, or bug reports.
         </p>
       </section>
 

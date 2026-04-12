@@ -70,11 +70,11 @@ export default function SettingsPage() {
             <p className="text-[12px] text-text-muted">Learn how Rabona works</p>
           </div>
         </Link>
-        <a href="mailto:keugenelee11@gmail.com" className="press flex items-center gap-3 px-4 py-3.5">
+        <a href="mailto:rabona591@gmail.com" className="press flex items-center gap-3 px-4 py-3.5">
           <Mail size={16} className="text-text-muted" />
           <div className="flex-1">
             <p className="text-[14px] font-medium">Support</p>
-            <p className="text-[12px] text-text-muted">Email keugenelee11@gmail.com</p>
+            <p className="text-[12px] text-text-muted">Email rabona591@gmail.com</p>
           </div>
         </a>
       </div>

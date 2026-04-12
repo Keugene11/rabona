@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { isApprovedEmail } from '@/lib/universities'
 
-const GOOGLE_CLIENT_ID = '372750643272-3ab0ptudlj2s8vofsbumj7n5jiaa060e.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = '385342744199-occekpb40kb9r4a21oojsfta0t14etbi.apps.googleusercontent.com'
 
 export async function POST(request: Request) {
   try {
