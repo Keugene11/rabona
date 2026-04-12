@@ -184,7 +184,7 @@ export default function MentionInput({
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex-1 min-w-0">
       {multiline ? (
         <textarea
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
