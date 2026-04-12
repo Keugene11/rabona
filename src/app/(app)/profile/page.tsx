@@ -425,17 +425,10 @@ export default function ProfilePage() {
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
           </div>
 
-          {/* Living */}
+          {/* Campus */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Living</p>
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Campus</p>
             <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />
-            <EditableRow icon={Home} label="From" field="hometown" value={profile.hometown} />
-            <EditableRow icon={School} label="High School" field="high_school" value={profile.high_school} />
-          </div>
-
-          {/* Organizations */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Organizations</p>
             <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
             <EditableRow icon={Users} label="Club" field="clubs" value={profile.clubs} options={(uniData?.CLUBS || []).map(c => ({ value: c, label: c }))} />
           </div>
@@ -443,6 +436,8 @@ export default function ProfilePage() {
           {/* Personal */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
             <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Personal</p>
+            <EditableRow icon={Home} label="From" field="hometown" value={profile.hometown} />
+            <EditableRow icon={School} label="High School" field="high_school" value={profile.high_school} />
             <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
             <EditableRow icon={GraduationCap} label="Gender" field="gender" value={profile.gender} options={GENDERS.map(g => ({ value: g, label: g }))} />
             <EditableRow icon={Heart} label="Status" field="relationship_status" value={profile.relationship_status} options={RELATIONSHIP_STATUSES.map(s => ({ value: s, label: s }))} />
