@@ -258,18 +258,19 @@ CREATE POLICY "Users can create wall posts" ON public.wall_posts
 -- 8. CONTENT LENGTH CAPS
 -- ============================================
 
+-- Posts may have empty content if media_url is set, so only cap the max.
 ALTER TABLE public.wall_posts
   DROP CONSTRAINT IF EXISTS wall_posts_content_length_check;
 ALTER TABLE public.wall_posts
   ADD CONSTRAINT wall_posts_content_length_check CHECK (
-    length(content) BETWEEN 1 AND 4000
+    length(content) <= 4000
   );
 
 ALTER TABLE public.group_posts
   DROP CONSTRAINT IF EXISTS group_posts_content_length_check;
 ALTER TABLE public.group_posts
   ADD CONSTRAINT group_posts_content_length_check CHECK (
-    length(content) BETWEEN 1 AND 4000
+    length(content) <= 4000
   );
 
 ALTER TABLE public.comments
