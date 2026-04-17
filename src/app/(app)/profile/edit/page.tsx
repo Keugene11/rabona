@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Camera, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
-import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import AvatarCropper from '@/components/AvatarCropper'
 import type { Profile } from '@/types'
 
@@ -19,7 +18,6 @@ export default function ProfilePage() {
   const [movieInput, setMovieInput] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [cropFile, setCropFile] = useState<File | null>(null)
-  const [uniData, setUniData] = useState<UniversityData | null>(null)
 
   useEffect(() => {
     loadProfile()
@@ -35,15 +33,13 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data as Profile)
       setAvatarUrl(data.avatar_url || '')
-      const ud = await getUniversityData(data.university || 'stonybrook')
-      setUniData(ud)
     }
 
     setLoading(false)
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'major', 'second_major', 'minor', 'residence_hall',
+    'full_name', 'about_me', 'university', 'major', 'second_major', 'minor', 'residence_hall',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
@@ -99,11 +95,6 @@ export default function ProfilePage() {
   function removeTag(field: string, tag: string, existing: string[]) {
     updateField(field, existing.filter(t => t !== tag).join(', '))
   }
-
-  // Hall groups
-  const resHalls = uniData?.RESIDENCE_HALLS || []
-  const hallGroups: Record<string, typeof resHalls> = {}
-  for (const h of resHalls) { const g = h.group || 'Other'; if (!hallGroups[g]) hallGroups[g] = []; hallGroups[g].push(h) }
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
   if (!profile) return null
@@ -189,43 +180,25 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Academics */}
+          {/* School & Work */}
           <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
-            <p className="text-[13px] font-semibold">Academics</p>
+            <p className="text-[13px] font-semibold">School & Work</p>
             <div>
-              <label className={labelClass}>Major</label>
-              <select value={profile.major || ''} onChange={(e) => updateField('major', e.target.value)} className={selectClass}>
-                <option value="">Select major</option>
-                {(uniData?.MAJORS || []).map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <label className={labelClass}>University / School</label>
+              <input type="text" value={profile.university || ''} onChange={(e) => updateField('university', e.target.value)} className={inputClass} placeholder="Where do you study?" />
+            </div>
+            <div>
+              <label className={labelClass}>Major / Job</label>
+              <input type="text" value={profile.major || ''} onChange={(e) => updateField('major', e.target.value)} className={inputClass} placeholder="What do you study or do?" />
             </div>
             <div>
               <label className={labelClass}>Second Major</label>
-              <select value={profile.second_major || ''} onChange={(e) => updateField('second_major', e.target.value)} className={selectClass}>
-                <option value="">None</option>
-                {(uniData?.MAJORS || []).map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <input type="text" value={profile.second_major || ''} onChange={(e) => updateField('second_major', e.target.value)} className={inputClass} placeholder="Optional" />
             </div>
             <div>
               <label className={labelClass}>Minor</label>
-              <select value={profile.minor || ''} onChange={(e) => updateField('minor', e.target.value)} className={selectClass}>
-                <option value="">None</option>
-                {(uniData?.MINORS || []).map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <input type="text" value={profile.minor || ''} onChange={(e) => updateField('minor', e.target.value)} className={inputClass} placeholder="Optional" />
             </div>
-            {resHalls.length > 0 && (
-              <div>
-                <label className={labelClass}>Residence Hall</label>
-                <select value={profile.residence_hall || ''} onChange={(e) => updateField('residence_hall', e.target.value)} className={selectClass}>
-                  <option value="">Select</option>
-                  {Object.entries(hallGroups).map(([group, halls]) => (
-                    <optgroup key={group} label={group}>
-                      {halls.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
 
           {/* Personal */}
