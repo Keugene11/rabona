@@ -7,7 +7,6 @@ import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, INTERESTED_IN } from '@/li
 
 interface Filters {
   name: string
-  residence_hall: string
   gender: string
   major: string
   class_year: string
@@ -21,10 +20,9 @@ interface DirectoryFiltersProps {
   filters: Filters
   onChange: (filters: Filters) => void
   majors?: string[]
-  residenceHalls?: { value: string; label: string; group?: string }[]
 }
 
-export default function DirectoryFilters({ filters, onChange, majors = [], residenceHalls = [] }: DirectoryFiltersProps) {
+export default function DirectoryFilters({ filters, onChange, majors = [] }: DirectoryFiltersProps) {
   const [showMore, setShowMore] = useState(false)
 
   const update = (key: keyof Filters, value: string) => {
@@ -50,18 +48,6 @@ export default function DirectoryFilters({ filters, onChange, majors = [], resid
 
       {/* Primary filters — always visible */}
       <div className="grid grid-cols-2 gap-2">
-        {residenceHalls.length > 0 && (
-          <div>
-            <label className="text-[10px] text-text-muted uppercase tracking-wide font-medium mb-0.5 block">Residence Hall</label>
-            <StyledSelect
-              value={filters.residence_hall}
-              onChange={(v) => update('residence_hall', v)}
-              placeholder="Any hall"
-              searchable
-              options={residenceHalls}
-            />
-          </div>
-        )}
         <div>
           <label className="text-[10px] text-text-muted uppercase tracking-wide font-medium mb-0.5 block">Major</label>
           <StyledSelect
@@ -152,7 +138,7 @@ export default function DirectoryFilters({ filters, onChange, majors = [], resid
       {hasFilters && (
         <button
           onClick={() => onChange({
-            name: '', residence_hall: '', gender: '', major: '', class_year: '',
+            name: '', gender: '', major: '', class_year: '',
             hometown: '', high_school: '', relationship_status: '', interested_in: '',
           })}
           className="text-[12px] text-text-muted flex items-center gap-1 press hover:text-text"

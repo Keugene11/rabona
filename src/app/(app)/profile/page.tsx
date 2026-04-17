@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, LogOut, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft } from 'lucide-react'
+import { Loader2, LogOut, Camera, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Briefcase, ArrowLeft, Share2 } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
-import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import WallPostForm from '@/components/WallPostForm'
 import WallPostItem from '@/components/WallPost'
 import AvatarCropper from '@/components/AvatarCropper'
@@ -29,7 +28,6 @@ export default function ProfilePage() {
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [uniData, setUniData] = useState<UniversityData | null>(null)
 
   useEffect(() => { loadProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -40,8 +38,6 @@ export default function ProfilePage() {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) {
       setProfile(data as Profile)
-      const ud = await getUniversityData(data.university || 'stonybrook')
-      setUniData(ud)
     }
     const { data: posts } = await supabase.from('wall_posts').select('*, author:profiles!wall_posts_author_id_fkey(*)').eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)
     if (posts) setWallPosts(posts as WallPost[])
@@ -76,7 +72,7 @@ export default function ProfilePage() {
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'major', 'second_major', 'minor', 'residence_hall',
+    'full_name', 'about_me', 'university', 'major', 'second_major', 'minor', 'job',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
@@ -128,14 +124,9 @@ export default function ProfilePage() {
   const inputClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none w-full border border-border focus:border-text-muted'
   const selectClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none border border-border focus:border-text-muted cursor-pointer'
 
-  // Hall groups for select
-  const resHalls = uniData?.RESIDENCE_HALLS || []
-  const hallGroups: Record<string, typeof resHalls> = {}
-  for (const h of resHalls) { const g = h.group || 'Other'; if (!hallGroups[g]) hallGroups[g] = []; hallGroups[g].push(h) }
-
   // Editable row: click to open edit sheet
   function EditableRow({ icon: Icon, label, field, value, type = 'text', options }: {
-    icon: typeof MapPin; label: string; field: string; value?: string | null; type?: string
+    icon: typeof Briefcase; label: string; field: string; value?: string | null; type?: string
     options?: { value: string; label: string; group?: string }[]
   }) {
     return (
@@ -159,10 +150,11 @@ export default function ProfilePage() {
     const fieldConfigs: Record<string, { label: string; type: string; options?: { value: string; label: string; group?: string }[] }> = {
       full_name: { label: 'Name', type: 'text' },
       about_me: { label: 'About', type: 'textarea' },
-      major: { label: 'Major', type: 'select', options: (uniData?.MAJORS || []).map(m => ({ value: m, label: m })) },
-      second_major: { label: 'Second Major', type: 'select', options: (uniData?.MAJORS || []).map(m => ({ value: m, label: m })) },
-      minor: { label: 'Minor', type: 'select', options: (uniData?.MINORS || []).map(m => ({ value: m, label: m })) },
-      residence_hall: { label: 'Dorm', type: 'select', options: resHalls },
+      university: { label: 'University / School', type: 'text' },
+      major: { label: 'Major', type: 'text' },
+      second_major: { label: 'Second Major', type: 'text' },
+      minor: { label: 'Minor', type: 'text' },
+      job: { label: 'Job', type: 'text' },
       hometown: { label: 'Hometown', type: 'text' },
       high_school: { label: 'High School', type: 'text' },
       birthday: { label: 'Birthday', type: 'birthday' },
@@ -402,7 +394,7 @@ export default function ProfilePage() {
             <h1 className="text-[20px] font-bold tracking-tight truncate">{profile.full_name || 'Set your name'}</h1>
             <p className="text-[13px] text-text-muted truncate">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
+              {profile.job ? ` · ${profile.job}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -437,7 +429,7 @@ export default function ProfilePage() {
             <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
             <p className="text-[13px] text-text-muted mt-0.5">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
+              {profile.job ? ` · ${profile.job}` : ''}
             </p>
             <div className="flex items-center gap-3 mt-2">
               <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
@@ -491,13 +483,14 @@ export default function ProfilePage() {
             <p className={`text-[13px] cursor-pointer ${profile.about_me ? 'hover:underline' : empty}`}>{profile.about_me || 'Click to add...'}</p>
           </div>
 
-          {/* Academics & Background */}
+          {/* School & Work */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
-            <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
-            <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} options={(uniData?.MINORS || []).map(m => ({ value: m, label: m }))} />
+            <EditableRow icon={School} label="University" field="university" value={profile.university} />
+            <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} />
+            <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} />
+            <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} />
+            <EditableRow icon={Briefcase} label="Job" field="job" value={profile.job} />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
-            {resHalls.length > 0 && <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />}
           </div>
 
           {/* Personal */}

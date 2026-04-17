@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Users } from 'lucide-react'
+import { Loader2, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Briefcase } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost, Group } from '@/types'
@@ -306,9 +306,9 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             <h1 className="text-[22px] font-bold tracking-tight">{profile.full_name}</h1>
             <div className="text-[13px] text-text-muted space-y-0.5 mt-0.5">
               {profile.major && <p>{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>}
-              {profile.residence_hall && (
+              {profile.job && (
                 <p className="flex items-center gap-1">
-                  <MapPin size={12} /> {profile.residence_hall}
+                  <Briefcase size={12} /> {profile.job}
                 </p>
               )}
               {profile.last_seen && (
@@ -450,23 +450,17 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Academics */}
-          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || profile.class_year) && (
+          {/* School & Work */}
+          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || show('job', profile.job) || profile.class_year) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Academics</p>
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">School & Work</p>
               <div className="space-y-0.5">
                 {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
                 {show('second_major', profile.second_major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">2nd Major:</span> <span>{profile.second_major}</span></div>}
                 {show('minor', profile.minor) && <div className="flex items-center gap-2 text-[13px] py-0.5"><BookOpen size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Minor:</span> <span>{profile.minor}</span></div>}
+                {show('job', profile.job) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Briefcase size={13} className="text-text-muted flex-shrink-0" /><span>{profile.job}</span></div>}
                 {profile.class_year && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Class of</span> <span>{profile.class_year}</span></div>}
               </div>
-            </div>
-          )}
-
-          {/* Campus */}
-          {show('residence_hall', profile.residence_hall) && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <div className="flex items-center gap-2 text-[13px]"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>
             </div>
           )}
 

@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, BookOpen, MapPin, Home, School, Cake, Heart, Globe, Mail, Phone, Users, Pencil } from 'lucide-react'
+import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, BookOpen, Home, School, Cake, Heart, Globe, Mail, Phone, Users, Pencil, Briefcase } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
-import { getUniversityData } from '@/lib/university-data'
 import type { Profile } from '@/types'
 
 type IconType = typeof GraduationCap
@@ -19,13 +18,14 @@ interface FieldConfig {
   searchable?: boolean
 }
 
-function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: string[]): FieldConfig[] {
+function buildPrivacyFields(): FieldConfig[] {
   return [
     { field: 'email', label: 'Email', icon: Mail },
-    { field: 'major', label: 'Major', icon: GraduationCap, type: 'select', options: majors, searchable: true },
-    { field: 'second_major', label: 'Second Major', icon: GraduationCap, type: 'select', options: majors, searchable: true },
-    { field: 'minor', label: 'Minor', icon: BookOpen, type: 'select', options: minors, searchable: true },
-    { field: 'residence_hall', label: 'Dorm', icon: MapPin, type: 'select', options: residenceHalls, searchable: true },
+    { field: 'university', label: 'University / School', icon: School },
+    { field: 'major', label: 'Major', icon: GraduationCap },
+    { field: 'second_major', label: 'Second Major', icon: GraduationCap },
+    { field: 'minor', label: 'Minor', icon: BookOpen },
+    { field: 'job', label: 'Job', icon: Briefcase },
     { field: 'hometown', label: 'Hometown', icon: Home },
     { field: 'high_school', label: 'High School', icon: School },
     { field: 'birthday', label: 'Birthday', icon: Cake, type: 'birthday' },
@@ -64,12 +64,7 @@ export default function PrivacySettingsPage() {
         if (data.private_fields) {
           setPrivateFields(data.private_fields.split(',').filter(Boolean))
         }
-        const ud = await getUniversityData(data.university || 'stonybrook')
-        setPrivacyFields(buildPrivacyFields(
-          ud.MAJORS,
-          ud.MINORS,
-          ud.RESIDENCE_HALLS.map(h => typeof h === 'string' ? h : h.value),
-        ))
+        setPrivacyFields(buildPrivacyFields())
       }
       setLoading(false)
     }

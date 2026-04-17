@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Circle } from 'lucide-react'
+import { Briefcase, Circle } from 'lucide-react'
 import type { Profile } from '@/types'
 
 interface ProfileCardProps {
@@ -26,9 +26,9 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
           <p className="text-[12px] text-text-muted truncate">
             {profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
           </p>
-          {profile.residence_hall && (
+          {profile.job && (
             <p className="text-[11px] text-text-muted flex items-center gap-1 truncate">
-              <MapPin size={10} /> {profile.residence_hall}
+              <Briefcase size={10} /> {profile.job}
             </p>
           )}
           {profile.last_seen && (

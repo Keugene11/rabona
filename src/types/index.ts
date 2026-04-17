@@ -8,6 +8,7 @@ export interface Profile {
   second_major: string
   minor: string
   residence_hall: string
+  job: string
   courses: string
   gender: string
   relationship_status: string

@@ -12,7 +12,6 @@ import { HIDDEN_EMAILS } from '@/lib/constants'
 
 interface Filters {
   name: string
-  residence_hall: string
   gender: string
   major: string
   class_year: string
@@ -24,7 +23,6 @@ interface Filters {
 
 const emptyFilters: Filters = {
   name: '',
-  residence_hall: '',
   gender: '',
   major: '',
   class_year: '',
@@ -71,7 +69,7 @@ export default function DirectoryPage() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, major, class_year, gender, residence_hall, hometown, high_school, relationship_status, interested_in, last_seen')
+        .select('id, full_name, avatar_url, major, class_year, gender, hometown, high_school, relationship_status, interested_in, last_seen, job')
         .eq('university', myUniversity)
         .not('email', 'in', `(${HIDDEN_EMAILS.join(',')})`)
         .order('last_seen', { ascending: false, nullsFirst: false })
@@ -91,7 +89,6 @@ export default function DirectoryPage() {
 
   const displayList = allUsers.filter(p => {
     if (filters.name && !p.full_name.toLowerCase().includes(filters.name.toLowerCase())) return false
-    if (filters.residence_hall && p.residence_hall !== filters.residence_hall) return false
     if (filters.major && p.major !== filters.major) return false
     if (filters.gender && p.gender !== filters.gender) return false
     if (filters.class_year && p.class_year?.toString() !== filters.class_year) return false
@@ -114,7 +111,6 @@ export default function DirectoryPage() {
         filters={filters}
         onChange={setFilters}
         majors={uniData?.MAJORS}
-        residenceHalls={uniData?.RESIDENCE_HALLS}
       />
 
       <div className="mt-4">

@@ -39,7 +39,7 @@ export default function ProfilePage() {
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'university', 'major', 'second_major', 'minor', 'residence_hall',
+    'full_name', 'about_me', 'university', 'major', 'second_major', 'minor', 'job',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
@@ -188,8 +188,8 @@ export default function ProfilePage() {
               <input type="text" value={profile.university || ''} onChange={(e) => updateField('university', e.target.value)} className={inputClass} placeholder="Where do you study?" />
             </div>
             <div>
-              <label className={labelClass}>Major / Job</label>
-              <input type="text" value={profile.major || ''} onChange={(e) => updateField('major', e.target.value)} className={inputClass} placeholder="What do you study or do?" />
+              <label className={labelClass}>Major</label>
+              <input type="text" value={profile.major || ''} onChange={(e) => updateField('major', e.target.value)} className={inputClass} placeholder="What do you study?" />
             </div>
             <div>
               <label className={labelClass}>Second Major</label>
@@ -198,6 +198,10 @@ export default function ProfilePage() {
             <div>
               <label className={labelClass}>Minor</label>
               <input type="text" value={profile.minor || ''} onChange={(e) => updateField('minor', e.target.value)} className={inputClass} placeholder="Optional" />
+            </div>
+            <div>
+              <label className={labelClass}>Job</label>
+              <input type="text" value={profile.job || ''} onChange={(e) => updateField('job', e.target.value)} className={inputClass} placeholder="What do you do?" />
             </div>
           </div>
 
