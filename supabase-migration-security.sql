@@ -3,7 +3,7 @@
 -- Addresses findings H3, H5, H6, H7, H8, H9, C3 (select leak), M2, M4, M9
 
 -- ============================================
--- 0. CONVERSATIONS: add missing columns the client already writes/reads
+-- 0. Add columns the client code references but were missing from schema.
 -- These silently no-op'd until now because the columns didn't exist.
 -- ============================================
 
@@ -12,6 +12,9 @@ ALTER TABLE public.conversations
   ADD COLUMN IF NOT EXISTS last_message_sender_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS user1_read_at timestamptz,
   ADD COLUMN IF NOT EXISTS user2_read_at timestamptz;
+
+ALTER TABLE public.wall_posts
+  ADD COLUMN IF NOT EXISTS media_url text;
 
 -- ============================================
 -- 1. NOTIFICATIONS: lock down INSERT + add type/length CHECKs
