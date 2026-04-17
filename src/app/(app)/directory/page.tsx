@@ -5,8 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 import DirectoryFilters from '@/components/DirectoryFilters'
 import ProfileCard from '@/components/ProfileCard'
-import { getUniversityData, type UniversityData } from '@/lib/university-data'
-import { getUniversityBySlug } from '@/lib/universities'
 import type { Profile } from '@/types'
 import { HIDDEN_EMAILS } from '@/lib/constants'
 
@@ -38,8 +36,6 @@ export default function DirectoryPage() {
   const [allUsers, setAllUsers] = useState<Profile[]>([])
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [uniData, setUniData] = useState<UniversityData | null>(null)
-  const [uniName, setUniName] = useState('')
 
   useEffect(() => {
     async function init() {
@@ -60,17 +56,9 @@ export default function DirectoryPage() {
       ))
       setFriendIds(friendSet)
 
-      // Get current user's university to filter directory
-      const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-      const myUniversity = myProfile?.university || 'stonybrook'
-      const ud = await getUniversityData(myUniversity)
-      setUniData(ud)
-      setUniName(getUniversityBySlug(myUniversity)?.name || '')
-
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, major, class_year, gender, hometown, high_school, relationship_status, interested_in, last_seen, job')
-        .eq('university', myUniversity)
         .not('email', 'in', `(${HIDDEN_EMAILS.join(',')})`)
         .order('last_seen', { ascending: false, nullsFirst: false })
 
@@ -89,7 +77,7 @@ export default function DirectoryPage() {
 
   const displayList = allUsers.filter(p => {
     if (filters.name && !p.full_name.toLowerCase().includes(filters.name.toLowerCase())) return false
-    if (filters.major && p.major !== filters.major) return false
+    if (filters.major && !p.major?.toLowerCase().includes(filters.major.toLowerCase())) return false
     if (filters.gender && p.gender !== filters.gender) return false
     if (filters.class_year && p.class_year?.toString() !== filters.class_year) return false
     if (filters.hometown && !p.hometown?.toLowerCase().includes(filters.hometown.toLowerCase())) return false
@@ -103,14 +91,12 @@ export default function DirectoryPage() {
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Directory</h1>
-        {uniName && <p className="text-[13px] text-text-muted">{uniName}</p>}
         <div className="accent-bar" />
       </div>
 
       <DirectoryFilters
         filters={filters}
         onChange={setFilters}
-        majors={uniData?.MAJORS}
       />
 
       <div className="mt-4">

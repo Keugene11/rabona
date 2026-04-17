@@ -31,7 +31,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
   const [reportDetails, setReportDetails] = useState('')
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const [reportSent, setReportSent] = useState(false)
-  const [notInNetwork, setNotInNetwork] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -53,15 +52,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       if (HIDDEN_EMAILS.includes(profileData.email || '') && user && user.id !== id) {
         setLoading(false)
         return
-      }
-      // Check if same university
-      if (user) {
-        const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-        if (myProfile && profileData.university && myProfile.university !== profileData.university) {
-          setNotInNetwork(true)
-          setLoading(false)
-          return
-        }
       }
       setProfile(profileData as Profile)
     }
@@ -180,14 +170,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-text-muted" size={24} />
-      </div>
-    )
-  }
-
-  if (notInNetwork) {
-    return (
-      <div className="max-w-lg mx-auto px-4 pt-12 text-center">
-        <p className="text-text-muted">This user is not in your school&apos;s network.</p>
       </div>
     )
   }
@@ -451,10 +433,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           )}
 
           {/* School & Work */}
-          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || show('job', profile.job) || profile.class_year) && (
+          {(show('university', profile.university) || show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || show('job', profile.job) || profile.class_year) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
               <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">School & Work</p>
               <div className="space-y-0.5">
+                {show('university', profile.university) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.university}</span></div>}
                 {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
                 {show('second_major', profile.second_major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">2nd Major:</span> <span>{profile.second_major}</span></div>}
                 {show('minor', profile.minor) && <div className="flex items-center gap-2 text-[13px] py-0.5"><BookOpen size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Minor:</span> <span>{profile.minor}</span></div>}

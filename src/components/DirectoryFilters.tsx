@@ -19,10 +19,9 @@ interface Filters {
 interface DirectoryFiltersProps {
   filters: Filters
   onChange: (filters: Filters) => void
-  majors?: string[]
 }
 
-export default function DirectoryFilters({ filters, onChange, majors = [] }: DirectoryFiltersProps) {
+export default function DirectoryFilters({ filters, onChange }: DirectoryFiltersProps) {
   const [showMore, setShowMore] = useState(false)
 
   const update = (key: keyof Filters, value: string) => {
@@ -50,12 +49,12 @@ export default function DirectoryFilters({ filters, onChange, majors = [] }: Dir
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] text-text-muted uppercase tracking-wide font-medium mb-0.5 block">Major</label>
-          <StyledSelect
+          <input
+            type="text"
             value={filters.major}
-            onChange={(v) => update('major', v)}
+            onChange={(e) => update('major', e.target.value)}
             placeholder="Any major"
-            searchable
-            options={majors.map(m => ({ value: m, label: m }))}
+            className="w-full bg-bg-card border border-border rounded-xl px-3 py-2 text-[13px] placeholder:text-text-muted/50 outline-none focus:border-text-muted transition-colors"
           />
         </div>
         <div>
