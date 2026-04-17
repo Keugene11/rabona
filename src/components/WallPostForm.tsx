@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Loader2, Image, X } from 'lucide-react'
 import type { WallPost } from '@/types'
 import { notifyFriends } from '@/lib/notifyFriends'
-import MentionInput, { extractMentionIds } from '@/components/MentionInput'
 
 interface WallPostFormProps {
   wallOwnerId: string
@@ -20,6 +19,13 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = ta.scrollHeight + 'px'
+  }, [content])
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -72,18 +78,6 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
       onPost(data as WallPost)
       setContent('')
       clearMedia()
-      // Notify mentioned users
-      const mentionedIds = extractMentionIds(content).filter(id => id !== user.id)
-      for (const mentionedId of mentionedIds) {
-        await supabase.from('notifications').insert({
-          user_id: mentionedId,
-          actor_id: user.id,
-          type: 'mention',
-          post_type: 'wall_post',
-          post_id: data.id,
-          content: content.trim().slice(0, 100),
-        })
-      }
       // Notify friends that you posted
       notifyFriends(supabase, user.id, 'friend_post', {
         post_type: 'wall_post',
@@ -98,13 +92,13 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="bg-bg-card border border-border rounded-2xl p-3">
-      <MentionInput
+      <textarea
+        ref={textareaRef}
         value={content}
-        onChange={setContent}
+        onChange={(e) => setContent(e.target.value)}
         maxLength={2000}
-        placeholder="Write on the wall... (@ to mention)"
-        className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none min-h-[4rem]"
-        multiline
+        placeholder="Write on the wall..."
+        className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none resize-none min-h-[4rem] overflow-hidden"
       />
       {mediaPreview && (
         <div className="relative mb-2 inline-block">

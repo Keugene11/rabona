@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Hand, UserPlus, UserCheck, Heart, MessageSquare, MessageCircle, Users, Check } from 'lucide-react'
+import { Loader2, Hand, UserPlus, UserCheck, UserX, Heart, MessageSquare, MessageCircle, Users, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/types'
@@ -201,11 +201,11 @@ export default function NotificationsPage() {
 
   async function pokeBack(notifId: string, actorId: string) {
     setPokedBack(prev => new Set([...prev, notifId]))
-    // Clear any existing pokes between the two users, then create new one
-    await supabase.from('pokes').delete().eq('poker_id', userId).eq('poked_id', actorId)
+    // Clear their poke to me, upsert my poke back
     await supabase.from('pokes').delete().eq('poker_id', actorId).eq('poked_id', userId)
+    await supabase.from('pokes').delete().eq('poker_id', userId).eq('poked_id', actorId)
     await supabase.from('pokes').insert({ poker_id: userId, poked_id: actorId })
-    // Create a notification for the other person
+    // Always create a new notification so repeated pokes show up
     await supabase.from('notifications').insert({
       user_id: actorId,
       actor_id: userId,
@@ -225,15 +225,15 @@ export default function NotificationsPage() {
     if (type === 'like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
     if (type === 'comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'reply') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
+    if (type === 'follow') return <UserPlus size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_request') return <UserPlus size={12} className="text-accent flex-shrink-0" />
-    if (type === 'friend_accept') return <UserCheck size={12} className="text-green-500 flex-shrink-0" />
+    if (type === 'friend_accept') return <UserPlus size={12} className="text-accent flex-shrink-0" />
     if (type === 'message') return <MessageCircle size={12} className="text-accent flex-shrink-0" />
     if (type === 'poke') return <Hand size={12} className="text-accent flex-shrink-0" />
     if (type === 'group_join') return <Users size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_post') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
-    if (type === 'mention') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     return null
   }
 
@@ -241,6 +241,7 @@ export default function NotificationsPage() {
     if (type === 'like') return 'liked your post'
     if (type === 'comment') return 'commented on your post'
     if (type === 'reply') return 'replied to your comment'
+    if (type === 'follow') return 'sent you a friend request'
     if (type === 'friend_request') return 'sent you a friend request'
     if (type === 'friend_accept') return 'accepted your friend request'
     if (type === 'message') return 'sent you a message'
@@ -249,13 +250,15 @@ export default function NotificationsPage() {
     if (type === 'friend_post') return 'made a post'
     if (type === 'friend_comment') return 'commented on a post'
     if (type === 'friend_like') return 'liked a post'
-    if (type === 'mention') return 'mentioned you'
     return ''
   }
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
-      <h1 className="text-[24px] font-bold tracking-tight mb-4">Inbox</h1>
+      <div className="mb-4">
+        <h1 className="text-[24px] font-bold tracking-tight">Inbox</h1>
+        <div className="accent-bar" />
+      </div>
 
       {notifications.length === 0 ? (
         <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
@@ -311,7 +314,7 @@ export default function NotificationsPage() {
                       &ldquo;{n.post_content}&rdquo;
                     </p>
                   )}
-                  {n.content && (n.type === 'friend_post' || n.type === 'friend_comment' || n.type === 'mention') && (
+                  {n.content && (n.type === 'friend_post' || n.type === 'friend_comment') && (
                     <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-2">
                       &ldquo;{n.content}&rdquo;
                     </p>
@@ -325,22 +328,25 @@ export default function NotificationsPage() {
                     <span className="text-[11px] text-text-muted">{getTimeAgo(new Date(n.created_at))}</span>
                   </div>
                 </div>
-                {/* Action buttons for friend requests */}
+                {/* Friend request accept/decline buttons */}
                 {showFriendActions && (
                   <div className="flex gap-2 flex-shrink-0">
                     <button
                       onClick={() => acceptRequest(n.actor_id)}
-                      className="bg-accent text-white rounded-xl px-3 py-1.5 text-[12px] font-medium press"
+                      className="bg-accent text-white rounded-xl px-3 py-1.5 text-[12px] font-medium press flex items-center gap-1"
                     >
-                      Accept
+                      <UserCheck size={12} /> Accept
                     </button>
                     <button
                       onClick={() => declineRequest(n.actor_id)}
-                      className="bg-bg-input border border-border rounded-xl px-3 py-1.5 text-[12px] font-medium press"
+                      className="bg-bg-input border border-border rounded-xl px-3 py-1.5 text-[12px] font-medium press flex items-center"
                     >
-                      Decline
+                      <UserX size={12} />
                     </button>
                   </div>
+                )}
+                {(n.type === 'friend_request' && handledRequests.has(n.actor_id)) && (
+                  <span className="text-[12px] text-text-muted flex-shrink-0">Handled</span>
                 )}
                 {/* Poke back button */}
                 {n.type === 'poke' && (

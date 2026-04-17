@@ -7,12 +7,12 @@ export async function notifyFriends(
   extra?: { post_type?: string; post_id?: string; comment_id?: string; content?: string },
   exclude?: string[]
 ) {
-  // Get all accepted friends
+  // Get all friends (accepted friendships in either direction)
   const { data: friendships } = await supabase
     .from('friendships')
     .select('requester_id, addressee_id')
-    .or(`requester_id.eq.${actorId},addressee_id.eq.${actorId}`)
     .eq('status', 'accepted')
+    .or(`requester_id.eq.${actorId},addressee_id.eq.${actorId}`)
 
   if (!friendships || friendships.length === 0) return
 

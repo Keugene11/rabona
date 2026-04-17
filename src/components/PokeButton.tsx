@@ -35,22 +35,26 @@ export default function PokeButton({ targetUserId, currentUserId }: PokeButtonPr
   async function handlePoke() {
     setLoading(true)
 
-    await supabase.from('pokes').delete().eq('poker_id', currentUserId).eq('poked_id', targetUserId)
+    // Clear their poke to me if they poked me first
     if (theyPokedMe) {
       await supabase.from('pokes').delete().eq('poker_id', targetUserId).eq('poked_id', currentUserId)
     }
 
-    await supabase.from('pokes').insert({
+    // Delete existing poke from me, then re-insert (refreshes created_at and seen)
+    await supabase.from('pokes').delete().eq('poker_id', currentUserId).eq('poked_id', targetUserId)
+    const { error: pokeErr } = await supabase.from('pokes').insert({
       poker_id: currentUserId,
       poked_id: targetUserId,
     })
+    if (pokeErr) console.error('Poke insert failed:', pokeErr)
 
-    // Create a persistent notification in the inbox
-    await supabase.from('notifications').insert({
+    // Always create a new notification so repeated pokes show up
+    const { error: notifErr } = await supabase.from('notifications').insert({
       user_id: targetUserId,
       actor_id: currentUserId,
       type: 'poke',
     })
+    if (notifErr) console.error('Poke notification insert failed:', notifErr)
 
     setTheyPokedMe(false)
     setLoading(false)

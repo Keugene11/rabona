@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import type { Profile } from '@/types'
+import { HIDDEN_EMAILS } from '@/lib/constants'
 
 interface Node {
   id: string
@@ -41,14 +42,17 @@ export default function NetworkPage({ params }: { params: Promise<{ id: string }
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', id).single()
       if (profileData) setProfile(profileData as Profile)
 
-      const { data: friendships } = await supabase
+      // Load friends (accepted friendships in either direction)
+      const { data: friendData } = await supabase
         .from('friendships')
-        .select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
-        .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
+        .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
         .eq('status', 'accepted')
+        .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
 
-      if (friendships) {
-        setFriends(friendships.map(f => (f.requester_id === id ? f.addressee : f.requester) as Profile))
+      if (friendData) {
+        setFriends(friendData.map(f =>
+          (f.requester_id === id ? f.addressee : f.requester) as unknown as Profile
+        ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
       }
       setLoading(false)
     }

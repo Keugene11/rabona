@@ -7,6 +7,9 @@ import Link from 'next/link'
 export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showEmailLogin, setShowEmailLogin] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -32,7 +35,7 @@ export default function LoginPage() {
           setLoading(false)
           return
         }
-        window.location.href = data.redirectTo || '/directory'
+        window.location.href = data.redirectTo || '/feed'
       } catch {
         setError('Could not authenticate')
         setLoading(false)
@@ -44,16 +47,39 @@ export default function LoginPage() {
     },
   })
 
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Could not sign in')
+        setLoading(false)
+        return
+      }
+      window.location.href = data.redirectTo || '/feed'
+    } catch {
+      setError('Could not sign in')
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center px-5">
       <div className="w-full max-w-sm animate-slide-up text-center">
-        <h1 className="text-[28px] font-extrabold tracking-tight text-text">
-          [ Rabona ]
+        <h1 className="text-[28px] font-extrabold tracking-tight">
+          <span className="text-accent">[</span> Rabona <span className="text-accent">]</span>
         </h1>
 
         <ul className="text-[13px] text-text-muted mt-5 text-left space-y-2 list-disc pl-5">
           <li>Write short updates and posts for your friends to read and like</li>
-          <li>Connect with other students at Cornell</li>
+          <li>Connect with other students at your university</li>
           <li>Join and make groups</li>
         </ul>
 
@@ -78,9 +104,46 @@ export default function LoginPage() {
         </button>
 
         <p className="text-[18px] font-semibold text-text mt-5">
-          You must sign in with your Cornell email address.
+          Sign in with any Google account.
         </p>
-        <p className="text-[12px] text-text-muted mt-2">
+
+        {/* Email/password login toggle */}
+        <button
+          onClick={() => setShowEmailLogin(!showEmailLogin)}
+          className="text-[12px] text-text-muted mt-4 press hover:underline"
+        >
+          {showEmailLogin ? 'Hide' : 'Sign in with email & password'}
+        </button>
+
+        {showEmailLogin && (
+          <form onSubmit={handleEmailLogin} className="mt-3 space-y-2 text-left">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              className="w-full bg-bg-input border border-border rounded-xl px-4 py-3 text-[14px] outline-none focus:border-text-muted"
+              required
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full bg-bg-input border border-border rounded-xl px-4 py-3 text-[14px] outline-none focus:border-text-muted"
+              required
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-accent text-white py-3 rounded-2xl font-semibold press text-[14px] disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+        )}
+
+        <p className="text-[12px] text-text-muted mt-4">
           <Link href="/about" className="text-accent press">Learn more</Link>
         </p>
       </div>

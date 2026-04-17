@@ -65,7 +65,10 @@ export default function MessagesPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 ">
-      <h1 className="text-[24px] font-bold tracking-tight mb-4">Messages</h1>
+      <div className="mb-4">
+        <h1 className="text-[24px] font-bold tracking-tight">Messages</h1>
+        <div className="accent-bar" />
+      </div>
 
       {conversations.length === 0 ? (
         <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">

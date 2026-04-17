@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2, Image, X } from 'lucide-react'
+import ImageCropper from '@/components/ImageCropper'
 
 export default function CreateGroupPage() {
   const supabase = createClient()
@@ -14,6 +15,7 @@ export default function CreateGroupPage() {
   const [loading, setLoading] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [cropFile, setCropFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -22,8 +24,15 @@ export default function CreateGroupPage() {
     if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB.'); return }
     const ext = (file.name.split('.').pop() || '').toLowerCase()
     if (!['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return
+    setCropFile(file)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function handleCropSave(blob: Blob) {
+    const file = new File([blob], 'group-cover.jpg', { type: 'image/jpeg' })
     setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+    setImagePreview(URL.createObjectURL(blob))
+    setCropFile(null)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -56,7 +65,7 @@ export default function CreateGroupPage() {
         group_type: groupType,
         created_by: user.id,
         image_url,
-        university: myProfile?.university || 'cornell',
+        university: myProfile?.university || 'stonybrook',
       })
       .select()
       .single()
@@ -78,15 +87,18 @@ export default function CreateGroupPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
-      <h1 className="text-[24px] font-bold tracking-tight mb-6">Create a Group</h1>
+      <div className="mb-6">
+        <h1 className="text-[24px] font-bold tracking-tight">Create a Group</h1>
+        <div className="accent-bar" />
+      </div>
 
       <form onSubmit={handleCreate} className="space-y-4">
         {/* Group Photo */}
         <div>
           <label className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5 block">Group Photo</label>
           {imagePreview ? (
-            <div className="relative rounded-2xl overflow-hidden">
-              <img src={imagePreview} alt="" className="w-full h-48 object-cover" />
+            <div className="relative rounded-2xl overflow-hidden bg-bg-card border border-border">
+              <img src={imagePreview} alt="" className="w-full h-56 object-cover" />
               <button
                 type="button"
                 onClick={() => { setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = '' }}
@@ -146,6 +158,15 @@ export default function CreateGroupPage() {
           {loading ? <Loader2 size={18} className="animate-spin" /> : 'Create Group'}
         </button>
       </form>
+
+      {cropFile && (
+        <ImageCropper
+          file={cropFile}
+          aspectRatio={4/3}
+          onSave={handleCropSave}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost, Group } from '@/types'
+import { HIDDEN_EMAILS, EMAIL_HIDDEN_FROM_OTHERS } from '@/lib/constants'
 import FriendButton from '@/components/FriendButton'
 import PokeButton from '@/components/PokeButton'
 import WallPostForm from '@/components/WallPostForm'
@@ -48,6 +49,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       .single()
 
     if (profileData) {
+      // Hide reviewer account from other users
+      if (HIDDEN_EMAILS.includes(profileData.email || '') && user && user.id !== id) {
+        setLoading(false)
+        return
+      }
       // Check if same university
       if (user) {
         const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
@@ -60,16 +66,16 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       setProfile(profileData as Profile)
     }
 
-    // Check friendship
+    // Check if current user is friends with this profile (accepted friendship in either direction)
     if (user) {
-      const { data: friendship } = await supabase
+      const { data: friendCheck } = await supabase
         .from('friendships')
-        .select('status')
-        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${user.id})`)
+        .select('id')
         .eq('status', 'accepted')
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${user.id})`)
         .maybeSingle()
 
-      setIsFriend(!!friendship)
+      setIsFriend(!!friendCheck)
     }
 
     // Load wall posts
@@ -82,15 +88,17 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
     if (posts) setWallPosts(posts as WallPost[])
 
-    // Load friends
-    const { data: friendships } = await supabase
+    // Load friends (accepted friendships in either direction)
+    const { data: friendData } = await supabase
       .from('friendships')
-      .select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
-      .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
+      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
       .eq('status', 'accepted')
+      .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
 
-    if (friendships) {
-      setFriends(friendships.map(f => (f.requester_id === id ? f.addressee : f.requester) as Profile))
+    if (friendData) {
+      setFriends(friendData.map(f =>
+        (f.requester_id === id ? f.addressee : f.requester) as unknown as Profile
+      ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
     }
 
     // Load user's groups
@@ -136,7 +144,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
         .eq('profile_id', id)
         .order('created_at', { ascending: false })
         .limit(50)
-      if (views) setProfileViews(views.map((v: { viewer: Profile }) => v.viewer))
+      if (views) setProfileViews(views.map((v: { viewer: Profile }) => v.viewer).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
     }
 
     setLoading(false)
@@ -148,9 +156,9 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       setIsBlocked(false)
     } else {
       await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: id })
-      // Also remove friendship
-      await supabase.from('friendships').delete()
-        .or(`and(requester_id.eq.${currentUserId},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${currentUserId})`)
+      // Also remove follows in both directions
+      await supabase.from('friendships').delete().eq('requester_id', currentUserId).eq('addressee_id', id)
+      await supabase.from('friendships').delete().eq('requester_id', id).eq('addressee_id', currentUserId)
       setIsBlocked(true)
       setIsFriend(false)
     }
@@ -194,52 +202,19 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
   const privateFields = profile.private_fields ? profile.private_fields.split(',').filter(Boolean) : []
   const isOwn = currentUserId === id
-  const show = (field: string, value: string | null | undefined) => isOwn || (!privateFields.includes(field) && !!value && value !== 'None')
+  const show = (field: string, value: string | null | undefined) => {
+    if (isOwn) return true
+    if (!value || value === 'None') return false
+    if (field === 'email' && EMAIL_HIDDEN_FROM_OTHERS.includes(value)) return false
+    if (privateFields.includes(field)) return false
+    if (privateFields.includes(`${field}:followers`)) return isFriend
+    return true
+  }
   const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
+  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-12 pb-28">
-      {/* Action buttons */}
-      {currentUserId && currentUserId !== id && !isBlocked && (
-        <div className="flex gap-2 mb-4">
-          <FriendButton targetUserId={id} currentUserId={currentUserId} />
-          <PokeButton targetUserId={id} currentUserId={currentUserId} />
-          <button
-            onClick={async () => {
-              const res = await fetch('/api/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId: id }),
-              })
-              const conv = await res.json()
-              if (conv.id) router.push(`/messages/${conv.id}`)
-            }}
-            className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2 hover:bg-bg-card-hover"
-          >
-            <MessageCircle size={14} /> Message
-          </button>
-        </div>
-      )}
-
-      {/* Block / Report */}
-      {currentUserId && currentUserId !== id && (
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={toggleBlock}
-            className={`press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border ${isBlocked ? 'border-red-500/30 text-red-500' : 'border-border text-text-muted hover:text-text'}`}
-          >
-            <Ban size={13} />
-            {isBlocked ? 'Unblock' : 'Block'}
-          </button>
-          <button
-            onClick={() => setShowReport(true)}
-            className="press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border border-border text-text-muted hover:text-text"
-          >
-            <Flag size={13} />
-            Report
-          </button>
-        </div>
-      )}
 
       {/* Report modal */}
       {showReport && (
@@ -286,6 +261,27 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      {/* Mobile profile header (visible on wall tab) */}
+      {!isOwn && (
+        <div className="flex items-center gap-3 mb-4 md:hidden">
+          <div className="w-10 h-10 rounded-full bg-bg-input border border-border overflow-hidden flex-shrink-0">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[14px] font-bold text-text-muted">
+                {profile.full_name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[16px] font-bold tracking-tight truncate">{profile.full_name}</h1>
+            {profile.major && (
+              <p className="text-[12px] text-text-muted truncate">{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mobile tabs */}
       <div className="flex gap-0 mb-4 md:hidden border-b border-border">
         <button
@@ -308,18 +304,9 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
         {/* LEFT COLUMN — Profile info */}
         <div className={`md:w-[340px] md:flex-shrink-0 md:sticky md:top-4 ${activeTab === 'info' ? 'block' : 'hidden'} md:block`}>
 
-          {/* Avatar & Name */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-4 mb-4">
-            <div className="w-full aspect-square rounded-xl bg-bg-input border border-border overflow-hidden">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-text-muted text-[64px] font-bold">
-                  {profile.full_name?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              )}
-            </div>
-            <h1 className="text-[22px] font-bold tracking-tight mt-3">{profile.full_name}</h1>
+          {/* Name & subtitle */}
+          <div className="mb-3">
+            <h1 className="text-[22px] font-bold tracking-tight">{profile.full_name}</h1>
             <div className="text-[13px] text-text-muted space-y-0.5 mt-0.5">
               {profile.major && <p>{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>}
               {profile.residence_hall && (
@@ -334,6 +321,61 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
               )}
             </div>
           </div>
+
+          {/* Avatar */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-4 mb-4">
+            <div className="w-full aspect-square rounded-xl bg-bg-input border border-border overflow-hidden">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-text-muted text-[64px] font-bold">
+                  {profile.full_name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          {currentUserId && currentUserId !== id && !isBlocked && (
+            <div className="flex gap-2 mb-4">
+              <FriendButton targetUserId={id} currentUserId={currentUserId} />
+              <PokeButton targetUserId={id} currentUserId={currentUserId} />
+              <button
+                onClick={async () => {
+                  const res = await fetch('/api/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetUserId: id }),
+                  })
+                  const conv = await res.json()
+                  if (conv.id) router.push(`/messages/${conv.id}`)
+                }}
+                className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2 hover:bg-bg-card-hover"
+              >
+                <MessageCircle size={14} /> Message
+              </button>
+            </div>
+          )}
+
+          {/* Block / Report */}
+          {currentUserId && currentUserId !== id && (
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={toggleBlock}
+                className={`press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border ${isBlocked ? 'border-red-500/30 text-red-500' : 'border-border text-text-muted hover:text-text'}`}
+              >
+                <Ban size={13} />
+                {isBlocked ? 'Unblock' : 'Block'}
+              </button>
+              <button
+                onClick={() => setShowReport(true)}
+                className="press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border border-border text-text-muted hover:text-text"
+              >
+                <Flag size={13} />
+                Report
+              </button>
+            </div>
+          )}
 
           {/* Profile views (own profile only) */}
           {isOwn && (
@@ -411,13 +453,42 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Details — compact icon rows, respects privacy */}
-          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || show('residence_hall', profile.residence_hall) || show('hometown', profile.hometown) || show('high_school', profile.high_school) || show('birthday', profile.birthday) || (show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say') || (show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say') || show('looking_for', profile.looking_for) || show('political_views', profile.political_views)) && (
+          {/* Academics */}
+          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || profile.class_year) && (
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Academics</p>
+              <div className="space-y-0.5">
+                {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
+                {show('second_major', profile.second_major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">2nd Major:</span> <span>{profile.second_major}</span></div>}
+                {show('minor', profile.minor) && <div className="flex items-center gap-2 text-[13px] py-0.5"><BookOpen size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Minor:</span> <span>{profile.minor}</span></div>}
+                {profile.class_year && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Class of</span> <span>{profile.class_year}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Courses */}
+          {courses.length > 0 && (
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
+              <p className="text-[13px]">{courses.join(', ')}</p>
+            </div>
+          )}
+
+          {/* Campus */}
+          {(show('residence_hall', profile.residence_hall) || show('fraternity_sorority', profile.fraternity_sorority) || clubs.length > 0) && (
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Campus</p>
+              <div className="space-y-0.5">
+                {show('residence_hall', profile.residence_hall) && <div className="flex items-center gap-2 text-[13px] py-0.5"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>}
+                {show('fraternity_sorority', profile.fraternity_sorority) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Greek Life:</span> <span>{profile.fraternity_sorority}</span></div>}
+                {clubs.length > 0 && <div className="flex items-start gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0 mt-0.5" /><span>{clubs.join(', ')}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Personal */}
+          {(show('hometown', profile.hometown) || show('high_school', profile.high_school) || show('birthday', profile.birthday) || (show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say') || (show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say') || show('looking_for', profile.looking_for) || show('political_views', profile.political_views)) && (
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-0.5">
-            {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
-            {show('second_major', profile.second_major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.second_major}</span></div>}
-            {show('minor', profile.minor) && <div className="flex items-center gap-2 text-[13px] py-0.5"><BookOpen size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Minor:</span> <span>{profile.minor}</span></div>}
-            {show('residence_hall', profile.residence_hall) && <div className="flex items-center gap-2 text-[13px] py-0.5"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>}
             {show('hometown', profile.hometown) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Home size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">From:</span> <span>{profile.hometown}</span></div>}
             {show('high_school', profile.high_school) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.high_school}</span></div>}
             {show('birthday', profile.birthday) && !isNaN(new Date(profile.birthday + 'T00:00:00').getTime()) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Cake size={13} className="text-text-muted flex-shrink-0" /><span>{new Date(profile.birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</span></div>}
@@ -425,8 +496,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             {show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Interested in:</span> <span>{profile.interested_in}</span></div>}
             {show('looking_for', profile.looking_for) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Looking for:</span> <span>{profile.looking_for}</span></div>}
             {show('political_views', profile.political_views) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Globe size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Political Views:</span> <span>{profile.political_views}</span></div>}
-            {show('fraternity_sorority', profile.fraternity_sorority) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Greek Life:</span> <span>{profile.fraternity_sorority}</span></div>}
-            {show('clubs', profile.clubs) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Club:</span> <span>{profile.clubs}</span></div>}
           </div>
           )}
 
@@ -439,21 +508,12 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-
-          {/* Courses */}
-          {courses.length > 0 && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Courses</p>
-              <div className="flex flex-wrap gap-1">{courses.map(c => <span key={c} className="bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">{c}</span>)}</div>
-            </div>
-          )}
-
           {/* Favorites */}
           {(profile.favorite_music || profile.favorite_movies || profile.interests || profile.favorite_quotes) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-2">
               {profile.interests && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Interests</p><p className="text-[13px]">{profile.interests}</p></div>}
-              {profile.favorite_music && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1">Favorite Music</p><div className="flex flex-wrap gap-1">{profile.favorite_music.split(', ').filter(Boolean).map(t => <span key={t} className="bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">{t}</span>)}</div></div>}
-              {profile.favorite_movies && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1">Favorite Movies</p><div className="flex flex-wrap gap-1">{profile.favorite_movies.split(', ').filter(Boolean).map(t => <span key={t} className="bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">{t}</span>)}</div></div>}
+              {profile.favorite_music && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Music</p><p className="text-[13px]">{profile.favorite_music}</p></div>}
+              {profile.favorite_movies && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Movies</p><p className="text-[13px]">{profile.favorite_movies}</p></div>}
               {profile.favorite_quotes && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Quotes</p><p className="text-[13px] italic">&ldquo;{profile.favorite_quotes}&rdquo;</p></div>}
             </div>
           )}

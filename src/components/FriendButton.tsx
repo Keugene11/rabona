@@ -2,93 +2,109 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { UserPlus, UserCheck, Clock, Loader2 } from 'lucide-react'
+import { UserPlus, UserCheck, Loader2, Clock, UserX } from 'lucide-react'
 
 interface FriendButtonProps {
   targetUserId: string
   currentUserId: string
+  onStatusChange?: (status: 'none' | 'pending_sent' | 'pending_received' | 'accepted') => void
 }
 
-type FriendState = 'none' | 'pending_sent' | 'pending_received' | 'friends' | 'loading'
-
-export default function FriendButton({ targetUserId, currentUserId }: FriendButtonProps) {
+export default function FriendButton({ targetUserId, currentUserId, onStatusChange }: FriendButtonProps) {
   const supabase = createClient()
-  const [state, setState] = useState<FriendState>('loading')
+  const [status, setStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | null>(null)
   const [friendshipId, setFriendshipId] = useState('')
-  const [confirmUnfriend, setConfirmUnfriend] = useState(false)
 
   useEffect(() => {
-    checkFriendship()
+    checkRelationship()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetUserId])
 
-  async function checkFriendship() {
-    const { data } = await supabase
+  async function checkRelationship() {
+    // Check if I sent a request to them
+    const { data: sent } = await supabase
       .from('friendships')
-      .select('*')
-      .or(`and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`)
+      .select('id, status')
+      .eq('requester_id', currentUserId)
+      .eq('addressee_id', targetUserId)
       .maybeSingle()
 
-    if (!data) {
-      setState('none')
+    if (sent) {
+      setFriendshipId(sent.id)
+      const s = sent.status === 'accepted' ? 'accepted' : 'pending_sent'
+      setStatus(s)
+      onStatusChange?.(s)
       return
     }
 
-    setFriendshipId(data.id)
+    // Check if they sent a request to me
+    const { data: received } = await supabase
+      .from('friendships')
+      .select('id, status')
+      .eq('requester_id', targetUserId)
+      .eq('addressee_id', currentUserId)
+      .maybeSingle()
 
-    if (data.status === 'accepted') {
-      setState('friends')
-    } else if (data.status === 'pending') {
-      setState(data.requester_id === currentUserId ? 'pending_sent' : 'pending_received')
-    } else {
-      setState('none')
+    if (received) {
+      setFriendshipId(received.id)
+      const s = received.status === 'accepted' ? 'accepted' : 'pending_received'
+      setStatus(s)
+      onStatusChange?.(s)
+      return
     }
+
+    setStatus('none')
+    onStatusChange?.('none')
   }
 
   async function sendRequest() {
-    setState('loading')
-    await supabase.from('friendships').insert({
+    setStatus(null)
+    const { data } = await supabase.from('friendships').insert({
       requester_id: currentUserId,
       addressee_id: targetUserId,
-    })
-    // Notify the recipient of the friend request
+      status: 'pending',
+    }).select('id').single()
+    if (data) setFriendshipId(data.id)
     await supabase.from('notifications').insert({
       user_id: targetUserId,
       actor_id: currentUserId,
       type: 'friend_request',
     })
-    await checkFriendship()
+    setStatus('pending_sent')
+    onStatusChange?.('pending_sent')
+  }
+
+  async function cancelRequest() {
+    setStatus(null)
+    await supabase.from('friendships').delete().eq('id', friendshipId)
+    setFriendshipId('')
+    setStatus('none')
+    onStatusChange?.('none')
   }
 
   async function acceptRequest() {
-    setState('loading')
+    setStatus(null)
     await supabase.from('friendships')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
       .eq('id', friendshipId)
-    // Notify the requester that their request was accepted
-    const { data: friendship } = await supabase
-      .from('friendships')
-      .select('requester_id')
-      .eq('id', friendshipId)
-      .single()
-    if (friendship) {
-      await supabase.from('notifications').insert({
-        user_id: friendship.requester_id,
-        actor_id: currentUserId,
-        type: 'friend_accept',
-      })
-    }
-    setState('friends')
+    await supabase.from('notifications').insert({
+      user_id: targetUserId,
+      actor_id: currentUserId,
+      type: 'friend_accept',
+    })
+    setStatus('accepted')
+    onStatusChange?.('accepted')
   }
 
-  async function removeFriendship() {
-    setState('loading')
+  async function unfriend() {
+    setStatus(null)
     await supabase.from('friendships').delete().eq('id', friendshipId)
-    setState('none')
     setFriendshipId('')
+    setStatus('none')
+    onStatusChange?.('none')
   }
 
-  if (state === 'loading') {
+  if (status === null) {
     return (
       <button disabled className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium flex items-center justify-center gap-2">
         <Loader2 size={14} className="animate-spin" />
@@ -96,28 +112,10 @@ export default function FriendButton({ targetUserId, currentUserId }: FriendButt
     )
   }
 
-  if (state === 'friends') {
-    if (confirmUnfriend) {
-      return (
-        <div className="flex gap-2">
-          <button
-            onClick={removeFriendship}
-            className="bg-red-500 text-white rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2"
-          >
-            Unfriend
-          </button>
-          <button
-            onClick={() => setConfirmUnfriend(false)}
-            className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium press"
-          >
-            Cancel
-          </button>
-        </div>
-      )
-    }
+  if (status === 'accepted') {
     return (
       <button
-        onClick={() => setConfirmUnfriend(true)}
+        onClick={unfriend}
         className="bg-bg-input border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2"
       >
         <UserCheck size={14} /> Friends
@@ -125,31 +123,31 @@ export default function FriendButton({ targetUserId, currentUserId }: FriendButt
     )
   }
 
-  if (state === 'pending_sent') {
+  if (status === 'pending_sent') {
     return (
       <button
-        onClick={removeFriendship}
-        className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2 text-text-muted"
+        onClick={cancelRequest}
+        className="bg-bg-input border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2 text-text-muted"
       >
-        <Clock size={14} /> Request Sent
+        <Clock size={14} /> Requested
       </button>
     )
   }
 
-  if (state === 'pending_received') {
+  if (status === 'pending_received') {
     return (
       <div className="flex gap-2">
         <button
           onClick={acceptRequest}
           className="bg-accent text-white rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2"
         >
-          Accept
+          <UserCheck size={14} /> Accept
         </button>
         <button
-          onClick={removeFriendship}
-          className="bg-bg-card border border-border rounded-xl py-2 px-4 text-[13px] font-medium press flex items-center justify-center gap-2"
+          onClick={cancelRequest}
+          className="bg-bg-input border border-border rounded-xl py-2 px-3 text-[13px] font-medium press flex items-center justify-center"
         >
-          Decline
+          <UserX size={14} />
         </button>
       </div>
     )

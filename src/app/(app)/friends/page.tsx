@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { Loader2, UserCheck, UserX } from 'lucide-react'
 import Link from 'next/link'
-import type { Friendship, Profile } from '@/types'
+import type { Profile } from '@/types'
+import { HIDDEN_EMAILS } from '@/lib/constants'
 
 export default function FriendsPage() {
   const supabase = createClient()
   const [tab, setTab] = useState<'friends' | 'requests'>('friends')
-  const [friends, setFriends] = useState<(Friendship & { friend: Profile })[]>([])
-  const [requests, setRequests] = useState<(Friendship & { requester: Profile })[]>([])
+  const [friends, setFriends] = useState<Profile[]>([])
+  const [requests, setRequests] = useState<{ id: string; profile: Profile }[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState('')
 
@@ -24,46 +25,57 @@ export default function FriendsPage() {
     if (!user) return
     setUserId(user.id)
 
-    // Load accepted friends
-    const { data: friendships } = await supabase
+    // Load accepted friends (either direction)
+    const { data: friendData } = await supabase
       .from('friendships')
-      .select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
       .eq('status', 'accepted')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
       .order('updated_at', { ascending: false })
 
-    if (friendships) {
-      setFriends(friendships.map(f => ({
-        ...f,
-        friend: (f.requester_id === user.id ? f.addressee : f.requester) as Profile,
-      })) as (Friendship & { friend: Profile })[])
+    if (friendData) {
+      setFriends(friendData.map(f =>
+        (f.requester_id === user.id ? f.addressee : f.requester) as unknown as Profile
+      ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
     }
 
-    // Load pending requests (where I am the addressee)
-    const { data: pending } = await supabase
+    // Load pending friend requests (sent to me)
+    const { data: requestData } = await supabase
       .from('friendships')
-      .select('*, requester:profiles!friendships_requester_id_fkey(*)')
+      .select('id, requester:profiles!friendships_requester_id_fkey(*)')
       .eq('addressee_id', user.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
 
-    if (pending) {
-      setRequests(pending as (Friendship & { requester: Profile })[])
+    if (requestData) {
+      setRequests(requestData.map(r => ({
+        id: r.id,
+        profile: r.requester as unknown as Profile,
+      })).filter(r => !HIDDEN_EMAILS.includes(r.profile.email || '')))
     }
 
     setLoading(false)
   }
 
-  async function acceptRequest(friendshipId: string) {
+  async function acceptRequest(friendshipId: string, requesterId: string) {
     await supabase.from('friendships')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
       .eq('id', friendshipId)
-    loadData()
+    await supabase.from('notifications').insert({
+      user_id: requesterId,
+      actor_id: userId,
+      type: 'friend_accept',
+    })
+    const accepted = requests.find(r => r.id === friendshipId)
+    if (accepted) {
+      setFriends(prev => [accepted.profile, ...prev])
+    }
+    setRequests(prev => prev.filter(r => r.id !== friendshipId))
   }
 
   async function declineRequest(friendshipId: string) {
     await supabase.from('friendships').delete().eq('id', friendshipId)
-    setRequests(requests.filter(r => r.id !== friendshipId))
+    setRequests(prev => prev.filter(r => r.id !== friendshipId))
   }
 
   if (loading) {
@@ -74,9 +86,36 @@ export default function FriendsPage() {
     )
   }
 
+  function UserRow({ user: u }: { user: Profile }) {
+    return (
+      <Link href={`/profile/${u.id}`} className="press block">
+        <div className="bg-bg-card border border-border rounded-2xl p-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors">
+          <div className="w-10 h-10 rounded-full bg-bg-input border border-border overflow-hidden flex-shrink-0">
+            {u.avatar_url ? (
+              <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[14px] font-bold text-text-muted">
+                {u.full_name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold truncate">{u.full_name}</p>
+            <p className="text-[12px] text-text-muted truncate">
+              {u.major}{u.class_year ? ` '${u.class_year.toString().slice(-2)}` : ''}
+            </p>
+          </div>
+        </div>
+      </Link>
+    )
+  }
+
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 ">
-      <h1 className="text-[24px] font-bold tracking-tight mb-4">Friends</h1>
+      <div className="mb-4">
+        <h1 className="text-[24px] font-bold tracking-tight">Friends</h1>
+        <div className="accent-bar" />
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-bg-input rounded-xl p-1 mb-4">
@@ -94,7 +133,7 @@ export default function FriendsPage() {
             tab === 'requests' ? 'bg-bg-card shadow-sm text-text' : 'text-text-muted'
           }`}
         >
-          Requests {requests.length > 0 && `(${requests.length})`}
+          Requests{requests.length > 0 ? ` (${requests.length})` : ''}
         </button>
       </div>
 
@@ -105,27 +144,7 @@ export default function FriendsPage() {
               <p className="text-text-muted text-[14px]">No friends yet. Use the directory to find people.</p>
             </div>
           ) : (
-            friends.map(f => (
-              <Link key={f.id} href={`/profile/${f.friend.id}`} className="press block">
-                <div className="bg-bg-card border border-border rounded-2xl p-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-bg-input border border-border overflow-hidden flex-shrink-0">
-                    {f.friend.avatar_url ? (
-                      <img src={f.friend.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[14px] font-bold text-text-muted">
-                        {f.friend.full_name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold truncate">{f.friend.full_name}</p>
-                    <p className="text-[12px] text-text-muted truncate">
-                      {f.friend.major}{f.friend.class_year ? ` '${f.friend.class_year.toString().slice(-2)}` : ''}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))
+            friends.map(u => <UserRow key={u.id} user={u} />)
           )}
         </div>
       )}
@@ -134,40 +153,42 @@ export default function FriendsPage() {
         <div className="space-y-2">
           {requests.length === 0 ? (
             <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
-              <p className="text-text-muted text-[14px]">No pending requests.</p>
+              <p className="text-text-muted text-[14px]">No pending friend requests.</p>
             </div>
           ) : (
             requests.map(r => (
               <div key={r.id} className="bg-bg-card border border-border rounded-2xl p-3 flex items-center gap-3">
-                <Link href={`/profile/${r.requester.id}`} className="press flex-shrink-0">
+                <Link href={`/profile/${r.profile.id}`} className="press flex-shrink-0">
                   <div className="w-10 h-10 rounded-full bg-bg-input border border-border overflow-hidden">
-                    {r.requester.avatar_url ? (
-                      <img src={r.requester.avatar_url} alt="" className="w-full h-full object-cover" />
+                    {r.profile.avatar_url ? (
+                      <img src={r.profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[14px] font-bold text-text-muted">
-                        {r.requester.full_name?.charAt(0)?.toUpperCase() || '?'}
+                        {r.profile.full_name?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                     )}
                   </div>
                 </Link>
-                <div className="flex-1 min-w-0">
-                  <Link href={`/profile/${r.requester.id}`} className="text-[14px] font-semibold hover:underline truncate block">
-                    {r.requester.full_name}
+                <div className="min-w-0 flex-1">
+                  <Link href={`/profile/${r.profile.id}`} className="press">
+                    <p className="text-[14px] font-semibold truncate hover:underline">{r.profile.full_name}</p>
                   </Link>
-                  <p className="text-[12px] text-text-muted">{r.requester.major}</p>
+                  <p className="text-[12px] text-text-muted truncate">
+                    {r.profile.major}{r.profile.class_year ? ` '${r.profile.class_year.toString().slice(-2)}` : ''}
+                  </p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => acceptRequest(r.id)}
-                    className="bg-accent text-white rounded-xl px-3 py-1.5 text-[12px] font-medium press"
+                    onClick={() => acceptRequest(r.id, r.profile.id)}
+                    className="bg-accent text-white rounded-xl py-1.5 px-3 text-[12px] font-medium press flex items-center gap-1"
                   >
-                    Accept
+                    <UserCheck size={12} /> Accept
                   </button>
                   <button
                     onClick={() => declineRequest(r.id)}
-                    className="bg-bg-input border border-border rounded-xl px-3 py-1.5 text-[12px] font-medium press"
+                    className="bg-bg-input border border-border rounded-xl py-1.5 px-3 text-[12px] font-medium press flex items-center"
                   >
-                    Decline
+                    <UserX size={12} />
                   </button>
                 </div>
               </div>

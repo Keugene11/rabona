@@ -8,6 +8,7 @@ import ProfileCard from '@/components/ProfileCard'
 import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import { getUniversityBySlug } from '@/lib/universities'
 import type { Profile } from '@/types'
+import { HIDDEN_EMAILS } from '@/lib/constants'
 
 interface Filters {
   name: string
@@ -56,19 +57,20 @@ export default function DirectoryPage() {
       const { data: blocks } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id)
       const blocked = blocks ? blocks.map(b => b.blocked_id) : []
 
-      const { data: friendships } = await supabase
+      // Get friends (accepted friendships in either direction)
+      const { data: friendData } = await supabase
         .from('friendships')
         .select('requester_id, addressee_id')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
         .eq('status', 'accepted')
-      const friendSet = new Set((friendships || []).map(f =>
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      const friendSet = new Set((friendData || []).map(f =>
         f.requester_id === user.id ? f.addressee_id : f.requester_id
       ))
       setFriendIds(friendSet)
 
       // Get current user's university to filter directory
       const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-      const myUniversity = myProfile?.university || 'cornell'
+      const myUniversity = myProfile?.university || 'stonybrook'
       const ud = await getUniversityData(myUniversity)
       setUniData(ud)
       setUniName(getUniversityBySlug(myUniversity)?.name || '')
@@ -77,6 +79,7 @@ export default function DirectoryPage() {
         .from('profiles')
         .select('id, full_name, avatar_url, major, class_year, gender, residence_hall, courses, hometown, high_school, fraternity_sorority, clubs, relationship_status, interested_in, last_seen')
         .eq('university', myUniversity)
+        .not('email', 'in', `(${HIDDEN_EMAILS.join(',')})`)
         .order('last_seen', { ascending: false, nullsFirst: false })
 
       if (profiles) {
@@ -111,10 +114,11 @@ export default function DirectoryPage() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
       <div className="flex items-center gap-3 mb-4">
-        <img src="/cornell-bear.png" alt="Cornell Big Red" className="w-16 h-16 object-contain" />
+        <img src="/sbu_logo.png" alt="SBU" className="w-10 h-10 object-contain" />
         <div>
           <h1 className="text-[24px] font-bold tracking-tight">Directory</h1>
           {uniName && <p className="text-[13px] text-text-muted">{uniName}</p>}
+          <div className="accent-bar" />
         </div>
       </div>
 

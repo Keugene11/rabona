@@ -29,13 +29,13 @@ export async function POST(request: Request) {
     }
     // Check if target user restricts messages to friends only
     if (theirProfile?.messages_from === 'friends') {
-      const { data: friendship } = await supabase
+      const { data: friendData } = await supabase
         .from('friendships')
         .select('id')
-        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`)
         .eq('status', 'accepted')
-        .maybeSingle()
-      if (!friendship) {
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`)
+        .limit(1)
+      if (!friendData || friendData.length === 0) {
         return NextResponse.json({ error: 'This user only accepts messages from friends' }, { status: 403 })
       }
     }

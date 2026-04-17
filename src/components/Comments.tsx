@@ -6,8 +6,6 @@ import Link from 'next/link'
 import { Send, Trash2, Pencil, Check, X, Heart } from 'lucide-react'
 import type { Comment } from '@/types'
 import { notifyFriends } from '@/lib/notifyFriends'
-import MentionInput, { extractMentionIds } from '@/components/MentionInput'
-import MentionText from '@/components/MentionText'
 
 interface CommentsProps {
   postType: 'wall_post' | 'group_post'
@@ -119,22 +117,8 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
       })
     }
 
-    // Notify mentioned users
-    const mentionedIds = extractMentionIds(text).filter(id => id !== userId)
-    for (const mentionedId of mentionedIds) {
-      await supabase.from('notifications').insert({
-        user_id: mentionedId,
-        actor_id: userId,
-        type: 'mention',
-        post_type: postType,
-        post_id: postId,
-        comment_id: newComment?.id,
-        content: text.slice(0, 100),
-      })
-    }
-
     // Notify friends (exclude people who already got a direct notification)
-    const exclude: string[] = [...mentionedIds]
+    const exclude: string[] = []
     if (parentId) {
       const parent = comments.find(c => c.id === parentId) || comments.flatMap(c => c.replies || []).find(c => c.id === parentId)
       if (parent && parent.author_id !== userId) exclude.push(parent.author_id)
@@ -158,8 +142,12 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
   }
 
   async function handleDelete(commentId: string) {
-    // Nullify notification references before deleting so notifications don't cascade-delete
-    await supabase.from('notifications').update({ comment_id: null }).eq('comment_id', commentId)
+    // Nullify notification references via server route (uses service role for cross-user updates)
+    await fetch('/api/cleanup-notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment_id: commentId }),
+    })
     await supabase.from('comments').delete().eq('id', commentId)
     loadComments()
   }
@@ -205,6 +193,37 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
                 onToggleLike={() => toggleLikeComment(c.id)}
               />
 
+              {replyTo === c.id && (
+                <div className="ml-6 mt-1.5">
+                  <div className="flex items-center gap-1.5 mb-1 px-1">
+                    <span className="text-[10px] text-text-muted">Replying to</span>
+                    <span className="text-[10px] font-semibold">{c.author?.full_name || 'Unknown'}</span>
+                    <button onClick={() => { setReplyTo(null); setReplyInput('') }} className="press ml-auto">
+                      <X size={10} className="text-text-muted" />
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={replyInput}
+                      onChange={(e) => setReplyInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handlePost(c.id) }}
+                      maxLength={2000}
+                      placeholder={`Reply to ${c.author?.full_name || 'Unknown'}...`}
+                      className="flex-1 bg-bg-input rounded-lg px-3 py-1.5 text-[12px] outline-none placeholder:text-text-muted/50 border border-border"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handlePost(c.id)}
+                      disabled={!replyInput.trim()}
+                      className="text-accent disabled:opacity-30 press"
+                    >
+                      <Send size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {c.replies && c.replies.length > 0 && (
                 <div className="ml-6 space-y-1.5 mt-1.5">
                   {c.replies.map(r => (
@@ -221,38 +240,18 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
                   ))}
                 </div>
               )}
-
-              {replyTo === c.id && (
-                <div className="ml-6 mt-1.5 flex gap-2">
-                  <MentionInput
-                    value={replyInput}
-                    onChange={setReplyInput}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.defaultPrevented) handlePost(c.id) }}
-                    maxLength={2000}
-                    placeholder="Write a reply... (@ to mention)"
-                    className="flex-1 bg-bg-input rounded-lg px-3 py-1.5 text-[12px] outline-none placeholder:text-text-muted/50"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => handlePost(c.id)}
-                    disabled={!replyInput.trim()}
-                    className="text-accent disabled:opacity-30 press"
-                  >
-                    <Send size={14} />
-                  </button>
-                </div>
-              )}
             </div>
           ))}
 
           {canComment ? (
             <div className="flex gap-2">
-              <MentionInput
+              <input
+                type="text"
                 value={input}
-                onChange={setInput}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.defaultPrevented) handlePost(null) }}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handlePost(null) }}
                 maxLength={2000}
-                placeholder="Write a comment... (@ to mention)"
+                placeholder="Write a comment..."
                 className="flex-1 bg-bg-input rounded-lg px-3 py-1.5 text-[12px] outline-none placeholder:text-text-muted/50"
               />
               <button
@@ -329,7 +328,7 @@ function CommentItem({ comment, userId, onDelete, onEdit, onReply, liked, likeCo
               <Link href={`/profile/${comment.author_id}`} className="text-[12px] font-semibold hover:underline">
                 {comment.author?.full_name || 'Unknown'}
               </Link>
-              <p className="text-[12px]"><MentionText text={comment.content} /></p>
+              <p className="text-[12px]">{comment.content}</p>
             </div>
             <div className="flex items-center gap-3 mt-0.5 px-1">
               <span className="text-[10px] text-text-muted">{getTimeAgo(new Date(comment.created_at))}</span>

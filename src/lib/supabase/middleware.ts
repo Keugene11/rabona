@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { isApprovedEmail } from '@/lib/universities'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -35,16 +34,6 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // Enforce Cornell email restriction (allow whitelisted emails)
-    const ALLOWED_EMAILS = ['keugenelee11@gmail.com', 'keugenelee9@gmail.com']
-    if (user && !isApprovedEmail(user.email || '') && !ALLOWED_EMAILS.includes(user.email || '')) {
-      await supabase.auth.signOut()
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('error', 'You must use a Cornell email address (@cornell.edu)')
-      return NextResponse.redirect(url)
-    }
-
     // If not logged in and not on auth pages, redirect to login
     if (
       !user &&
@@ -68,7 +57,7 @@ export async function updateSession(request: NextRequest) {
         request.nextUrl.pathname.startsWith('/signup'))
     ) {
       const url = request.nextUrl.clone()
-      url.pathname = '/directory'
+      url.pathname = '/feed'
       return NextResponse.redirect(url)
     }
   } catch (err) {

@@ -41,16 +41,17 @@ export default function PokesPage() {
   }
 
   async function pokeBack(pokerId: string, pokeId: string) {
-    // Delete their poke
+    // Delete their poke to me
     await supabase.from('pokes').delete().eq('id', pokeId)
 
-    // Create new poke back
+    // Delete any existing poke from me, then re-insert
+    await supabase.from('pokes').delete().eq('poker_id', userId).eq('poked_id', pokerId)
     await supabase.from('pokes').insert({
       poker_id: userId,
       poked_id: pokerId,
     })
 
-    // Create a persistent notification for the other person
+    // Always create a new notification so repeated pokes show up
     await supabase.from('notifications').insert({
       user_id: pokerId,
       actor_id: userId,
@@ -75,10 +76,13 @@ export default function PokesPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 ">
-      <h1 className="text-[24px] font-bold tracking-tight mb-4">
-        <Hand size={24} className="inline mr-2" />
-        Pokes
-      </h1>
+      <div className="mb-4">
+        <h1 className="text-[24px] font-bold tracking-tight">
+          <Hand size={24} className="inline mr-2" />
+          Pokes
+        </h1>
+        <div className="accent-bar" />
+      </div>
 
       {pokes.length === 0 ? (
         <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">

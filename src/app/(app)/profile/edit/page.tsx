@@ -7,21 +7,23 @@ import { Camera, Loader2, LogOut, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import { getUniversityData, type UniversityData } from '@/lib/university-data'
+import AvatarCropper from '@/components/AvatarCropper'
 import type { Profile } from '@/types'
 
 export default function ProfilePage() {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [userId, setUserId] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [avatarUrl, setAvatarUrl] = useState('')
-  const [courseFilter, setCourseFilter] = useState('')
-  const [courseOpen, setCourseOpen] = useState(false)
+  const [editingMulti, setEditingMulti] = useState<string | null>(null)
+  const [multiItems, setMultiItems] = useState<string[]>([])
+  const [multiSearch, setMultiSearch] = useState('')
   const [musicInput, setMusicInput] = useState('')
   const [movieInput, setMovieInput] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [cropFile, setCropFile] = useState<File | null>(null)
   const [uniData, setUniData] = useState<UniversityData | null>(null)
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data as Profile)
       setAvatarUrl(data.avatar_url || '')
-      const ud = await getUniversityData(data.university || 'cornell')
+      const ud = await getUniversityData(data.university || 'stonybrook')
       setUniData(ud)
     }
 
@@ -50,7 +52,7 @@ export default function ProfilePage() {
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
-    'favorite_quotes', 'courses', 'clubs',
+    'favorite_quotes', 'courses', 'clubs', 'fraternity_sorority',
   ])
 
   const updateField = useCallback((field: string, value: string | number | null) => {
@@ -58,24 +60,31 @@ export default function ProfilePage() {
     setProfile(prev => prev ? { ...prev, [field]: value } : prev)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      setSaving(true)
       await supabase.from('profiles').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', userId)
-      setSaving(false)
     }, 800)
   }, [userId, supabase])
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !userId) return
+    if (!file) return
     if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB.'); return }
+    setCropFile(file)
+    e.target.value = ''
+  }
+
+  async function handleAvatarSave(blob: Blob) {
+    setCropFile(null)
+    if (!userId) return
+    const previewUrl = URL.createObjectURL(blob)
+    setAvatarUrl(previewUrl)
+    setProfile(prev => prev ? { ...prev, avatar_url: previewUrl } : prev)
     // Delete old avatar
     if (avatarUrl && avatarUrl.includes('/avatars/')) {
       const oldPath = avatarUrl.split('/avatars/')[1]
       if (oldPath) await supabase.storage.from('avatars').remove([decodeURIComponent(oldPath)])
     }
-    const ext = file.name.split('.').pop()
-    const path = `${userId}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('avatars').upload(path, file)
+    const path = `${userId}/${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('avatars').upload(path, blob)
     if (error) return
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId)
@@ -92,21 +101,30 @@ export default function ProfilePage() {
   // Course helpers
   const courses = profile?.courses ? profile.courses.split(', ').filter(Boolean) : []
   const sortedDepts = uniData ? Object.entries(uniData.COURSES).sort((a, b) => a[0].localeCompare(b[0])) : []
-  const allCoursesByDept = sortedDepts
-    .map(([code, dept]) => ({
-      code, name: dept.name,
-      courses: dept.courses.map(n => `${code} ${n}`).filter(c => !courses.includes(c)).filter(c => {
-        if (!courseFilter) return true
-        const q = courseFilter.trim().toUpperCase()
-        if (/^[A-Z]{2,4}$/.test(q)) return code === q
-        if (/^[A-Z]{2,4}\s/.test(q)) return c.toUpperCase().startsWith(q)
-        return dept.name.toLowerCase().includes(courseFilter.toLowerCase())
-      })
-    }))
-    .filter(d => d.courses.length > 0)
+  const courseOptions = sortedDepts.flatMap(([code, dept]) => dept.courses.map(n => ({ value: `${code} ${n}`, label: `${code} ${n}`, group: `${code} — ${dept.name}` })))
 
-  function addCourse(course: string) { updateField('courses', [...courses, course].join(', ')); setCourseFilter('') }
-  function removeCourse(course: string) { updateField('courses', courses.filter(c => c !== course).join(', ')) }
+  // Club helpers
+  const clubs = profile?.clubs ? profile.clubs.split(', ').filter(Boolean) : []
+  const clubOptions = (uniData?.CLUBS || []).map(c => ({ value: c, label: c, group: '' }))
+
+  // Multi-select helpers
+  function getMultiItems(field: string) { return field === 'courses' ? courses : clubs }
+  function getMultiOptions(field: string) { return field === 'courses' ? courseOptions : clubOptions }
+  function openMultiEdit(field: string) {
+    setEditingMulti(field)
+    setMultiItems(getMultiItems(field))
+    setMultiSearch('')
+  }
+  function addMultiItem(field: string, val: string) {
+    const next = [...multiItems, val]
+    setMultiItems(next)
+    updateField(field, next.join(', '))
+  }
+  function removeMultiItem(field: string, val: string) {
+    const next = multiItems.filter(i => i !== val)
+    setMultiItems(next)
+    updateField(field, next.join(', '))
+  }
 
   // Tag helpers
   const musicTags = profile?.favorite_music ? profile.favorite_music.split(', ').filter(Boolean) : []
@@ -134,7 +152,7 @@ export default function ProfilePage() {
   const labelClass = 'text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1 block'
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pt-12 pb-28 ">
+    <><div className="max-w-5xl mx-auto px-4 pt-12 pb-28 ">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -143,11 +161,10 @@ export default function ProfilePage() {
               {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <Camera size={24} className="text-text-muted" />}
             </div>
             <div className="absolute bottom-0 right-0 bg-accent text-white rounded-full p-1"><Camera size={10} /></div>
-            <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+            <input type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
           </label>
           <div>
             <h1 className="text-[22px] font-bold tracking-tight">Edit Profile</h1>
-            {saving && <span className="text-[11px] text-text-muted">Saving...</span>}
           </div>
         </div>
         <Link href="/profile" className="press bg-accent text-white rounded-xl px-4 py-2 text-[13px] font-medium flex items-center gap-1.5">
@@ -248,57 +265,25 @@ export default function ProfilePage() {
                 </select>
               </div>
             )}
-            {sortedDepts.length > 0 && (
-              <div>
-                <label className={labelClass}>Courses</label>
-                {courses.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {courses.map(c => (
-                      <span key={c} className="inline-flex items-center gap-1 bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">
-                        {c}
-                        <button type="button" onClick={() => removeCourse(c)} className="text-text-muted hover:text-text"><X size={10} /></button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <input type="text" value={courseFilter} onChange={(e) => { setCourseFilter(e.target.value); setCourseOpen(true) }} onFocus={() => setCourseOpen(true)} className={inputClass} placeholder="Search courses (e.g. CSE)" />
-                {courseOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" style={{ bottom: '56px' }} onClick={() => setCourseOpen(false)} />
-                    <select value="" onChange={(e) => { if (e.target.value) { addCourse(e.target.value); setCourseOpen(false) } }} className={`${selectClass} mt-1 relative z-20`} size={5}>
-                      {allCoursesByDept.map(dept => (
-                        <optgroup key={dept.code} label={`${dept.code} — ${dept.name}`}>
-                          {dept.courses.map(c => <option key={c} value={c}>{c}</option>)}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Greek Life & Clubs */}
-          <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
-            <p className="text-[13px] font-semibold">Organizations</p>
-            {(uniData?.GREEK_LIFE || []).length > 0 && (
-              <div>
-                <label className={labelClass}>Greek Life</label>
-                <select value={profile.fraternity_sorority || ''} onChange={(e) => updateField('fraternity_sorority', e.target.value)} className={selectClass}>
-                  <option value="">None</option>
-                  {(uniData?.GREEK_LIFE || []).map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </div>
-            )}
-            {(uniData?.CLUBS || []).length > 0 && (
-              <div>
-                <label className={labelClass}>Club</label>
-                <select value={profile.clubs || ''} onChange={(e) => updateField('clubs', e.target.value)} className={selectClass}>
-                  <option value="">None</option>
-                  {(uniData?.CLUBS || []).map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className={labelClass}>Courses</label>
+              <button type="button" onClick={() => openMultiEdit('courses')} className={`${inputClass} text-left press`}>
+                {courses.length > 0 ? <span className="text-text">{courses.length} course{courses.length !== 1 ? 's' : ''} — tap to edit</span> : <span className="text-text-muted">Tap to add courses</span>}
+              </button>
+            </div>
+            <div>
+              <label className={labelClass}>Fraternity / Sorority</label>
+              <select value={profile.fraternity_sorority || ''} onChange={(e) => updateField('fraternity_sorority', e.target.value)} className={selectClass}>
+                <option value="">None</option>
+                {(uniData?.GREEK_LIFE || []).map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Clubs</label>
+              <button type="button" onClick={() => openMultiEdit('clubs')} className={`${inputClass} text-left press`}>
+                {clubs.length > 0 ? <span className="text-text">{clubs.length} club{clubs.length !== 1 ? 's' : ''} — tap to edit</span> : <span className="text-text-muted">Tap to add clubs</span>}
+              </button>
+            </div>
           </div>
 
           {/* Personal */}
@@ -351,12 +336,12 @@ export default function ProfilePage() {
             <p className="text-[13px] font-semibold">Favorites</p>
             <div>
               <label className={labelClass}>Music</label>
-              {musicTags.length > 0 && <div className="flex flex-wrap gap-1 mb-1.5">{musicTags.map(t => <span key={t} className="inline-flex items-center gap-1 bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">{t}<button type="button" onClick={() => removeTag('favorite_music', t, musicTags)} className="text-text-muted hover:text-text"><X size={10} /></button></span>)}</div>}
+              {musicTags.length > 0 && <p className="text-[13px] mb-1.5">{musicTags.join(', ')}</p>}
               <input type="text" value={musicInput} onChange={(e) => setMusicInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag('favorite_music', musicInput, musicTags, setMusicInput) } }} className={inputClass} placeholder="Type artist, press Enter" />
             </div>
             <div>
               <label className={labelClass}>Movies</label>
-              {movieTags.length > 0 && <div className="flex flex-wrap gap-1 mb-1.5">{movieTags.map(t => <span key={t} className="inline-flex items-center gap-1 bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">{t}<button type="button" onClick={() => removeTag('favorite_movies', t, movieTags)} className="text-text-muted hover:text-text"><X size={10} /></button></span>)}</div>}
+              {movieTags.length > 0 && <p className="text-[13px] mb-1.5">{movieTags.join(', ')}</p>}
               <input type="text" value={movieInput} onChange={(e) => setMovieInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag('favorite_movies', movieInput, movieTags, setMovieInput) } }} className={inputClass} placeholder="Type movie, press Enter" />
             </div>
             <div>
@@ -366,5 +351,69 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen multi-select overlay for courses/clubs */}
+      {editingMulti && (() => {
+        const field = editingMulti
+        const items = multiItems
+        const options = getMultiOptions(field).filter(o => !items.includes(o.value))
+        const filtered = options.filter(o => !multiSearch || o.label.toLowerCase().includes(multiSearch.toLowerCase()))
+        const grouped: Record<string, typeof options> = {}
+        const ungrouped: typeof options = []
+        filtered.forEach(o => {
+          if (o.group) { if (!grouped[o.group]) grouped[o.group] = []; grouped[o.group].push(o) }
+          else ungrouped.push(o)
+        })
+        return (
+          <div className="fixed inset-0 bg-bg z-[60] flex flex-col overflow-hidden touch-none" style={{ overscrollBehavior: 'none', height: '100dvh' }}>
+            <div className="flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
+              <button onClick={() => setEditingMulti(null)} className="press text-[14px] text-text-muted"><ArrowLeft size={20} /></button>
+              <h3 className="text-[17px] font-bold">{field === 'courses' ? 'Courses' : 'Clubs'}</h3>
+              <button onClick={() => setEditingMulti(null)} className="press text-[14px] font-semibold text-accent">Done</button>
+            </div>
+            <div className="flex-1 min-h-0 px-4 py-6 overflow-y-auto touch-auto">
+              {items.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  {items.map(item => (
+                    <div key={item} className="flex items-center justify-between px-4 py-3 bg-bg-input rounded-xl">
+                      <span className="text-[15px]">{item}</span>
+                      <button type="button" onClick={() => removeMultiItem(field, item)} className="press text-text-muted hover:text-text"><X size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                value={multiSearch}
+                onChange={(e) => setMultiSearch(e.target.value)}
+                placeholder={`Search ${field}...`}
+                className="w-full bg-bg-input rounded-xl px-4 py-3 text-[15px] outline-none border border-border focus:border-text-muted mb-4"
+                autoFocus
+              />
+              <div className="space-y-0.5">
+                {ungrouped.map(o => (
+                  <button key={o.value} type="button" onClick={() => addMultiItem(field, o.value)} className="press w-full text-left px-4 py-3.5 rounded-xl text-[15px] hover:bg-bg-input">{o.label}</button>
+                ))}
+                {Object.entries(grouped).map(([g, opts]) => (
+                  <div key={g}>
+                    <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-text-muted font-semibold">{g}</div>
+                    {opts.map(o => (
+                      <button key={o.value} type="button" onClick={() => addMultiItem(field, o.value)} className="press w-full text-left px-4 py-3.5 rounded-xl text-[15px] hover:bg-bg-input">{o.label}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+      {cropFile && (
+        <AvatarCropper
+          file={cropFile}
+          onSave={handleAvatarSave}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
+    </>
   )
 }

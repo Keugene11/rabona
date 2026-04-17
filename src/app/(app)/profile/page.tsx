@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, LogOut, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft, Pencil } from 'lucide-react'
+import { Loader2, LogOut, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import WallPostForm from '@/components/WallPostForm'
@@ -23,6 +23,8 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState<string | null>(null)
   const [courseFilter, setCourseFilter] = useState('')
   const [courseOpen, setCourseOpen] = useState(false)
+  const [clubFilter, setClubFilter] = useState('')
+  const [clubOpen, setClubOpen] = useState(false)
   const [musicInput, setMusicInput] = useState('')
   const [movieInput, setMovieInput] = useState('')
   const [friends, setFriends] = useState<Profile[]>([])
@@ -42,19 +44,21 @@ export default function ProfilePage() {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) {
       setProfile(data as Profile)
-      const ud = await getUniversityData(data.university || 'cornell')
+      const ud = await getUniversityData(data.university || 'stonybrook')
       setUniData(ud)
     }
     const { data: posts } = await supabase.from('wall_posts').select('*, author:profiles!wall_posts_author_id_fkey(*)').eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)
     if (posts) setWallPosts(posts as WallPost[])
-    // Load friends
-    const { data: friendships } = await supabase
+    // Load friends (accepted friendships in either direction)
+    const { data: friendData } = await supabase
       .from('friendships')
-      .select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
       .eq('status', 'accepted')
-    if (friendships) {
-      setFriends(friendships.map(f => (f.requester_id === user.id ? f.addressee : f.requester) as Profile))
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+    if (friendData) {
+      setFriends(friendData.map(f =>
+        (f.requester_id === user.id ? f.addressee : f.requester) as unknown as Profile
+      ))
     }
 
     const { data: memberships } = await supabase.from('group_members').select('group_id').eq('user_id', user.id)
@@ -80,7 +84,7 @@ export default function ProfilePage() {
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
-    'favorite_quotes', 'courses', 'clubs',
+    'favorite_quotes', 'courses', 'clubs', 'fraternity_sorority',
   ])
 
   const updateField = useCallback((field: string, value: string | number | null) => {
@@ -123,6 +127,7 @@ export default function ProfilePage() {
   if (!profile) return null
 
   const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
+  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
   const musicTags = profile.favorite_music ? profile.favorite_music.split(', ').filter(Boolean) : []
   const movieTags = profile.favorite_movies ? profile.favorite_movies.split(', ').filter(Boolean) : []
   const empty = 'text-text-muted/40 italic cursor-pointer'
@@ -146,6 +151,10 @@ export default function ProfilePage() {
       return dept.name.toLowerCase().includes(courseFilter.toLowerCase())
     })
   })).filter(d => d.courses.length > 0)
+
+  // Club helpers
+  const allClubs = (uniData?.CLUBS || []).filter(c => !clubs.includes(c))
+  const filteredClubs = allClubs.filter(c => !clubFilter || c.toLowerCase().includes(clubFilter.toLowerCase()))
 
   // Editable row: click to open edit sheet
   function EditableRow({ icon: Icon, label, field, value, type = 'text', options }: {
@@ -186,8 +195,9 @@ export default function ProfilePage() {
       interested_in: { label: 'Interested In', type: 'select', options: INTERESTED_IN.map(s => ({ value: s, label: s })) },
       looking_for: { label: 'Looking For', type: 'select', options: LOOKING_FOR.map(s => ({ value: s, label: s })) },
       political_views: { label: 'Political Views', type: 'select', options: POLITICAL_VIEWS.map(p => ({ value: p, label: p })) },
-      fraternity_sorority: { label: 'Greek Life', type: 'select', options: (uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g })) },
-      clubs: { label: 'Club', type: 'select', options: (uniData?.CLUBS || []).map(c => ({ value: c, label: c })) },
+      fraternity_sorority: { label: 'Fraternity / Sorority', type: 'select', options: (uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g })) },
+      courses: { label: 'Courses', type: 'multiselect', options: sortedDepts.flatMap(([code, dept]) => dept.courses.map(n => ({ value: `${code} ${n}`, label: `${code} ${n}`, group: `${code} — ${dept.name}` }))) },
+      clubs: { label: 'Clubs', type: 'multiselect', options: (uniData?.CLUBS || []).map(c => ({ value: c, label: c })) },
       email: { label: 'Email', type: 'text' },
       phone: { label: 'Phone', type: 'tel' },
       websites: { label: 'Website', type: 'text' },
@@ -220,15 +230,37 @@ export default function ProfilePage() {
       setEditing(null)
     }
 
+    const selected = type === 'multiselect' ? (currentValue ? currentValue.split(', ').filter(Boolean) : []) : []
+    const [multiSelected, setMultiSelected] = useState<string[]>(selected)
+
+    const filteredMultiOptions = options?.filter(o => {
+      if (multiSelected.includes(o.value)) return false
+      if (!search) return true
+      return o.label.toLowerCase().includes(search.toLowerCase())
+    })
+
+    function addItem(val: string) {
+      const next = [...multiSelected, val]
+      setMultiSelected(next)
+      updateField(field, next.join(', '))
+    }
+    function removeItem(val: string) {
+      const next = multiSelected.filter(v => v !== val)
+      setMultiSelected(next)
+      updateField(field, next.join(', '))
+    }
+
     return (
       <div className="fixed inset-0 bg-bg z-[60] flex flex-col animate-slide-up overflow-hidden touch-none" style={{ overscrollBehavior: 'none', height: '100dvh' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
+        <div className="max-w-lg mx-auto w-full flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
           <button onClick={() => setEditing(null)} className="press text-[14px] text-text-muted">
             <ArrowLeft size={20} />
           </button>
           <h3 className="text-[17px] font-bold">{label}</h3>
-          {type !== 'select' ? (
+          {type === 'multiselect' ? (
+            <button onClick={() => setEditing(null)} className="press text-[14px] font-semibold text-accent">Done</button>
+          ) : type !== 'select' ? (
             <button onClick={() => save()} className="press text-[14px] font-semibold text-accent">Save</button>
           ) : (
             <div className="w-[32px]" />
@@ -236,8 +268,54 @@ export default function ProfilePage() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 px-4 py-6 ${type === 'select' ? 'overflow-y-auto touch-auto -webkit-overflow-scrolling-touch' : 'overflow-hidden'}`}>
-          {type === 'select' && options ? (
+        <div className={`flex-1 min-h-0 max-w-lg mx-auto w-full px-4 py-6 ${type === 'select' || type === 'multiselect' ? 'overflow-y-auto touch-auto -webkit-overflow-scrolling-touch' : 'overflow-hidden'}`}>
+          {type === 'multiselect' && options ? (
+            <div>
+              {multiSelected.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  {multiSelected.map(item => (
+                    <div key={item} className="flex items-center justify-between px-4 py-3 bg-bg-input rounded-xl">
+                      <span className="text-[15px]">{item}</span>
+                      <button type="button" onClick={() => removeItem(item)} className="press text-text-muted hover:text-text"><X size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`Search ${label.toLowerCase()}...`}
+                className="w-full bg-bg-input rounded-xl px-4 py-3 text-[15px] outline-none border border-border focus:border-text-muted mb-4"
+                autoFocus
+              />
+              <div className="space-y-0.5">
+                {(() => {
+                  const grouped: Record<string, typeof options> = {}
+                  const ungrouped: typeof options = []
+                  filteredMultiOptions?.forEach(o => {
+                    if (o.group) { if (!grouped[o.group]) grouped[o.group] = []; grouped[o.group].push(o) }
+                    else ungrouped.push(o)
+                  })
+                  return (
+                    <>
+                      {ungrouped.map(o => (
+                        <button key={o.value} type="button" onClick={() => addItem(o.value)} className="press w-full text-left px-4 py-3.5 rounded-xl text-[15px] hover:bg-bg-input">{o.label}</button>
+                      ))}
+                      {Object.entries(grouped).map(([g, opts]) => (
+                        <div key={g}>
+                          <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-text-muted font-semibold">{g}</div>
+                          {opts.map(o => (
+                            <button key={o.value} type="button" onClick={() => addItem(o.value)} className="press w-full text-left px-4 py-3.5 rounded-xl text-[15px] hover:bg-bg-input">{o.label}</button>
+                          ))}
+                        </div>
+                      ))}
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+          ) : type === 'select' && options ? (
             <div>
               <input
                 type="text"
@@ -322,30 +400,55 @@ export default function ProfilePage() {
 
   function Tags({ items, field }: { items: string[]; field: string }) {
     return (
-      <div className="flex flex-wrap gap-1">
-        {items.map(t => (
-          <span key={t} className="inline-flex items-center gap-1 bg-bg-input text-[11px] font-medium px-2 py-0.5 rounded-full">
-            {t}
-            <button type="button" onClick={() => updateField(field, items.filter(i => i !== t).join(', '))} className="text-text-muted hover:text-text"><X size={10} /></button>
-          </span>
-        ))}
-      </div>
+      <p className="text-[13px]">{items.join(', ')}</p>
     )
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-10 pb-28">
+      {/* Mobile profile header — always visible */}
+      <div className="md:hidden mb-4">
+        <div className="flex items-center gap-3.5 mb-3">
+          <label className="relative cursor-pointer press flex-shrink-0">
+            <div className="w-16 h-16 rounded-full bg-bg-input border-2 border-border overflow-hidden">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[24px] font-bold text-text-muted">
+                  {profile.full_name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 bg-accent text-white rounded-full p-1">
+              <Camera size={10} />
+            </div>
+            <input type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
+          </label>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] font-bold tracking-tight truncate">{profile.full_name || 'Set your name'}</h1>
+            <p className="text-[13px] text-text-muted truncate">
+              {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
+              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
+            <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={16} /></button>
+          </div>
+        </div>
+      </div>
+
       {/* Mobile tabs */}
       <div className="flex gap-0 mb-4 md:hidden border-b border-border">
         <button
           onClick={() => setActiveTab('wall')}
-          className={`press flex-1 py-2.5 text-[14px] font-semibold text-center border-b-2 transition-colors ${activeTab === 'wall' ? 'border-text text-text' : 'border-transparent text-text-muted'}`}
+          className={`press flex-1 py-2.5 text-[14px] font-semibold text-center border-b-2 transition-colors ${activeTab === 'wall' ? 'border-accent text-accent' : 'border-transparent text-text-muted'}`}
         >
           Wall
         </button>
         <button
           onClick={() => setActiveTab('info')}
-          className={`press flex-1 py-2.5 text-[14px] font-semibold text-center border-b-2 transition-colors ${activeTab === 'info' ? 'border-text text-text' : 'border-transparent text-text-muted'}`}
+          className={`press flex-1 py-2.5 text-[14px] font-semibold text-center border-b-2 transition-colors ${activeTab === 'info' ? 'border-accent text-accent' : 'border-transparent text-text-muted'}`}
         >
           Info
         </button>
@@ -356,18 +459,13 @@ export default function ProfilePage() {
         <div className={`md:w-[380px] md:flex-shrink-0 md:sticky md:top-4 space-y-3 ${activeTab === 'info' ? 'block' : 'hidden'} md:block`}>
 
           {/* Name & subtitle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline flex items-center gap-2" onClick={() => setEditing('full_name')}>
-                {profile.full_name || 'Click to set name'}
-                <Pencil size={14} className="text-text-muted" />
-              </h1>
-              <p className="text-[13px] text-text-muted mt-0.5">
-                {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-                {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
+          <div>
+            <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
+            <p className="text-[13px] text-text-muted mt-0.5">
+              {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
+              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
+            </p>
+            <div className="flex items-center gap-3 mt-2">
               <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
               <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={18} /></button>
             </div>
@@ -419,26 +517,30 @@ export default function ProfilePage() {
             <p className={`text-[13px] cursor-pointer ${profile.about_me ? 'hover:underline' : empty}`}>{profile.about_me || 'Click to add...'}</p>
           </div>
 
-          {/* Academics */}
+          {/* Academics & Background */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Academics</p>
             <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} options={(uniData?.MINORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
+            {resHalls.length > 0 && <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />}
+            <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
           </div>
 
-          {/* Campus */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Campus</p>
-            <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />
-            <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
-            <EditableRow icon={Users} label="Club" field="clubs" value={profile.clubs} options={(uniData?.CLUBS || []).map(c => ({ value: c, label: c }))} />
+          {/* Courses */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('courses')}>
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
+            <p className={`text-[13px] cursor-pointer ${courses.length > 0 ? 'hover:underline' : empty}`}>{courses.length > 0 ? courses.join(', ') : 'Click to add...'}</p>
+          </div>
+
+          {/* Clubs */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('clubs')}>
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Clubs</p>
+            <p className={`text-[13px] cursor-pointer ${clubs.length > 0 ? 'hover:underline' : empty}`}>{clubs.length > 0 ? clubs.join(', ') : 'Click to add...'}</p>
           </div>
 
           {/* Personal */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Personal</p>
             <EditableRow icon={Home} label="From" field="hometown" value={profile.hometown} />
             <EditableRow icon={School} label="High School" field="high_school" value={profile.high_school} />
             <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
@@ -451,34 +553,16 @@ export default function ProfilePage() {
 
           {/* Contact */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium py-1.5">Contact</p>
-            <div className="flex items-center gap-2.5 py-1">
+            <div className="flex items-center gap-2.5 py-2.5">
               <Mail size={14} className="text-text-muted flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <span className="text-[14px] text-accent break-all">{profile.email}</span>
+                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium">Email</p>
+                <p className="text-[14px] text-accent break-all">{profile.email}</p>
               </div>
             </div>
             <EditableRow icon={Phone} label="Phone" field="phone" value={profile.phone} type="tel" />
             <EditableRow icon={Globe} label="Website" field="websites" value={profile.websites} />
           </div>
-
-
-          {/* Courses */}
-          {sortedDepts.length > 0 && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Courses</p>
-              {courses.length > 0 && <Tags items={courses} field="courses" />}
-              <input type="text" value={courseFilter} onChange={(e) => { setCourseFilter(e.target.value); setCourseOpen(true) }} onFocus={() => setCourseOpen(true)} className={`${inputClass} mt-1.5`} placeholder="Search courses (e.g. CSE)" />
-              {courseOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" style={{ bottom: '56px' }} onClick={() => setCourseOpen(false)} />
-                  <select value="" onChange={(e) => { if (e.target.value) { updateField('courses', [...courses, e.target.value].join(', ')); setCourseFilter(''); setCourseOpen(false) } }} className={`${selectClass} w-full mt-1 relative z-20`} size={5}>
-                    {filteredDepts.map(d => <optgroup key={d.code} label={`${d.code} — ${d.name}`}>{d.courses.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>)}
-                  </select>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Interests */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('interests')}>

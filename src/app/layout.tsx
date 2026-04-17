@@ -4,11 +4,16 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Rabona",
-  description: "A social network for Cornell University students",
+  description: "The social network for Stony Brook University students",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "StonyLoop",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a1a1a",
+  themeColor: "#c13545",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

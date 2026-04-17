@@ -2,20 +2,20 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Users, LogOut, Trash2, Send, Image, X, Pencil, Check, Camera } from 'lucide-react'
+import { Loader2, Users, LogOut, Trash2, Send, Image, X, Pencil, Check, Camera, Settings, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Group, GroupMember, GroupPost, Profile } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
-import MentionText from '@/components/MentionText'
-import MentionInput, { extractMentionIds } from '@/components/MentionInput'
 import ImageCropper from '@/components/ImageCropper'
 import { notifyFriends } from '@/lib/notifyFriends'
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const supabase = createClient()
+  const router = useRouter()
   const [group, setGroup] = useState<Group | null>(null)
   const [members, setMembers] = useState<(GroupMember & { user: Profile })[]>([])
   const [posts, setPosts] = useState<(GroupPost & { author: Profile })[]>([])
@@ -30,6 +30,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [editingPost, setEditingPost] = useState<string | null>(null)
   const [editPostContent, setEditPostContent] = useState('')
   const [groupCropFile, setGroupCropFile] = useState<File | null>(null)
+  const [editingGroup, setEditingGroup] = useState(false)
+  const [editGroupName, setEditGroupName] = useState('')
+  const [editGroupDesc, setEditGroupDesc] = useState('')
+  const [savingGroup, setSavingGroup] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingGroup, setDeletingGroup] = useState(false)
 
   useEffect(() => {
     loadGroup()
@@ -136,18 +142,6 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       setPosts([data as (GroupPost & { author: Profile }), ...posts])
       setPostContent('')
       setMediaFile(null)
-      // Notify mentioned users
-      const mentionedIds = extractMentionIds(postContent).filter(mid => mid !== currentUserId)
-      for (const mentionedId of mentionedIds) {
-        await supabase.from('notifications').insert({
-          user_id: mentionedId,
-          actor_id: currentUserId,
-          type: 'mention',
-          post_type: 'group_post',
-          post_id: data.id,
-          content: postContent.trim().slice(0, 100),
-        })
-      }
       // Notify friends
       notifyFriends(supabase, currentUserId, 'friend_post', {
         post_type: 'group_post',
@@ -193,10 +187,50 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function handleDeletePost(postId: string) {
-    // Nullify notification references before deleting so notifications don't cascade-delete
-    await supabase.from('notifications').update({ post_id: null }).eq('post_id', postId).eq('post_type', 'group_post')
+    // Nullify notification references via server route (uses service role for cross-user updates)
+    await fetch('/api/cleanup-notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: postId, post_type: 'group_post' }),
+    })
     await supabase.from('group_posts').delete().eq('id', postId)
     setPosts(posts.filter(p => p.id !== postId))
+  }
+
+  function startEditingGroup() {
+    if (!group) return
+    setEditGroupName(group.name)
+    setEditGroupDesc(group.description || '')
+    setEditingGroup(true)
+  }
+
+  async function handleSaveGroup() {
+    if (!group || !editGroupName.trim()) return
+    setSavingGroup(true)
+    const { error } = await supabase
+      .from('groups')
+      .update({ name: editGroupName.trim(), description: editGroupDesc.trim() })
+      .eq('id', id)
+    if (!error) {
+      setGroup({ ...group, name: editGroupName.trim(), description: editGroupDesc.trim() })
+      setEditingGroup(false)
+    }
+    setSavingGroup(false)
+  }
+
+  async function handleDeleteGroup() {
+    if (!group) return
+    setDeletingGroup(true)
+    // Delete all group posts, members, then the group itself
+    await supabase.from('group_posts').delete().eq('group_id', id)
+    await supabase.from('group_members').delete().eq('group_id', id)
+    // Delete group image from storage if exists
+    if (group.image_url && group.image_url.includes('/posts/')) {
+      const oldPath = group.image_url.split('/posts/')[1]
+      if (oldPath) await supabase.storage.from('posts').remove([decodeURIComponent(oldPath)])
+    }
+    await supabase.from('groups').delete().eq('id', id)
+    router.push('/groups')
   }
 
   if (loading) {
@@ -243,30 +277,112 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Group header */}
           <div className="bg-bg-card border border-border rounded-2xl p-4 mb-4">
-            <div className="mb-3">
-              <h1 className="text-[20px] font-bold tracking-tight">{group.name}</h1>
-              <p className="text-[12px] text-text-muted">{members.length} member{members.length !== 1 ? 's' : ''} · {group.group_type}</p>
-            </div>
-
-            {group.description && (
-              <p className="text-[13px] text-text-muted mb-3">{group.description}</p>
-            )}
-
-            {/* Join / Leave button */}
-            {isMember ? (
-              <button
-                onClick={handleLeave}
-                className="w-full bg-bg-input border border-border rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-2"
-              >
-                <LogOut size={14} /> Leave Group
-              </button>
+            {editingGroup ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-medium text-text-muted mb-1 block">Group Name</label>
+                  <input
+                    value={editGroupName}
+                    onChange={(e) => setEditGroupName(e.target.value)}
+                    maxLength={100}
+                    className="w-full bg-bg-input border border-border rounded-xl px-3 py-2 text-[14px] outline-none focus:border-text-muted"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-text-muted mb-1 block">Description</label>
+                  <textarea
+                    value={editGroupDesc}
+                    onChange={(e) => setEditGroupDesc(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    className="w-full bg-bg-input border border-border rounded-xl px-3 py-2 text-[14px] outline-none resize-none focus:border-text-muted"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveGroup}
+                    disabled={savingGroup || !editGroupName.trim()}
+                    className="flex-1 bg-accent text-white rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {savingGroup ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save
+                  </button>
+                  <button
+                    onClick={() => setEditingGroup(false)}
+                    className="flex-1 bg-bg-input border border-border rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-1.5"
+                  >
+                    <X size={14} /> Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
-              <button
-                onClick={handleJoin}
-                className="w-full bg-accent text-white rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-2"
-              >
-                <Users size={14} /> Join Group
-              </button>
+              <>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h1 className="text-[20px] font-bold tracking-tight">{group.name}</h1>
+                    <p className="text-[12px] text-text-muted">{members.length} member{members.length !== 1 ? 's' : ''} · {group.group_type}</p>
+                  </div>
+                  {isAdmin && (
+                    <button onClick={startEditingGroup} className="press text-text-muted hover:text-text p-1.5">
+                      <Settings size={18} />
+                    </button>
+                  )}
+                </div>
+
+                {group.description && (
+                  <p className="text-[13px] text-text-muted mb-3">{group.description}</p>
+                )}
+
+                {/* Join / Leave button */}
+                {isMember ? (
+                  <button
+                    onClick={handleLeave}
+                    className="w-full bg-bg-input border border-border rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-2"
+                  >
+                    <LogOut size={14} /> Leave Group
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleJoin}
+                    className="w-full bg-accent text-white rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-2"
+                  >
+                    <Users size={14} /> Join Group
+                  </button>
+                )}
+
+                {/* Delete group */}
+                {isAdmin && (
+                  <>
+                    {showDeleteConfirm ? (
+                      <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                        <p className="text-[13px] font-medium text-red-500 mb-2">Delete this group? This cannot be undone.</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleDeleteGroup}
+                            disabled={deletingGroup}
+                            className="flex-1 bg-red-500 text-white rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            {deletingGroup ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="flex-1 bg-bg-input border border-border rounded-xl py-2 text-[13px] font-medium press"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full mt-2 text-red-500 border border-red-500/20 rounded-xl py-2 text-[13px] font-medium press flex items-center justify-center gap-2 hover:bg-red-500/5"
+                      >
+                        <Trash2 size={14} /> Delete Group
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </div>
 
@@ -297,17 +413,19 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* RIGHT — Group wall */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-[18px] font-bold mb-3">Group Wall</h2>
+          <div className="mb-3">
+            <h2 className="text-[18px] font-bold">Group Wall</h2>
+            <div className="accent-bar" />
+          </div>
 
           {isMember && (
             <form onSubmit={handlePost} className="bg-bg-card border border-border rounded-2xl p-3 mb-4">
-              <MentionInput
+              <textarea
                 value={postContent}
-                onChange={setPostContent}
+                onChange={(e) => { setPostContent(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                 maxLength={2000}
-                placeholder="Write something to the group... (@ to mention)"
-                className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none h-16"
-                multiline
+                placeholder="Write something to the group..."
+                className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none resize-none min-h-[4rem] max-h-[50vh] overflow-y-auto"
               />
               {mediaPreview && (
                 <div className="relative mb-2 inline-block">
@@ -408,7 +526,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   ) : (
                     <>
-                      {post.content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap"><MentionText text={post.content} /></p>}
+                      {post.content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap">{post.content}</p>}
                       {post.media_url && (
                         <div className="mt-2.5">
                           {/\.(mp4|webm|mov|avi)$/i.test(post.media_url) ? (
@@ -430,7 +548,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       {groupCropFile && (
         <ImageCropper
           file={groupCropFile}
-          aspectRatio={2}
+          aspectRatio={4/3}
           onSave={handleGroupImageSave}
           onCancel={() => setGroupCropFile(null)}
         />

@@ -65,7 +65,7 @@ export default function PrivacySettingsPage() {
         if (data.private_fields) {
           setPrivateFields(data.private_fields.split(',').filter(Boolean))
         }
-        const ud = await getUniversityData(data.university || 'cornell')
+        const ud = await getUniversityData(data.university || 'stonybrook')
         setPrivacyFields(buildPrivacyFields(
           ud.MAJORS,
           ud.MINORS,
@@ -86,9 +86,19 @@ export default function PrivacySettingsPage() {
     }, 400)
   }, [userId, supabase])
 
+  function getPrivacyState(field: string): 'visible' | 'followers' | 'private' {
+    if (privateFields.includes(field)) return 'private'
+    if (privateFields.includes(`${field}:followers`)) return 'followers'
+    return 'visible'
+  }
+
   function togglePrivacy(field: string) {
-    const isPrivate = privateFields.includes(field)
-    savePrivacy(isPrivate ? privateFields.filter(f => f !== field) : [...privateFields, field])
+    const state = getPrivacyState(field)
+    // Cycle: visible → followers → private → visible
+    const without = privateFields.filter(f => f !== field && f !== `${field}:followers`)
+    if (state === 'visible') savePrivacy([...without, `${field}:followers`])
+    else if (state === 'followers') savePrivacy([...without, field])
+    else savePrivacy(without)
   }
 
   async function saveField(field: string, value: string) {
@@ -132,7 +142,7 @@ export default function PrivacySettingsPage() {
       <div className="bg-bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
         {privacyFields.map((fc) => {
           const { field, label, icon: Icon, type, options, searchable } = fc
-          const isPrivate = privateFields.includes(field)
+          const privacyState = getPrivacyState(field)
           const value = getFieldValue(field)
           const isEditing = editing === field
 
@@ -157,10 +167,15 @@ export default function PrivacySettingsPage() {
                   onClick={() => togglePrivacy(field)}
                   className="press flex-shrink-0"
                 >
-                  {isPrivate ? (
+                  {privacyState === 'private' ? (
                     <span className="flex items-center gap-1.5 text-[12px] text-accent font-medium">
                       <Lock size={13} />
                       Private
+                    </span>
+                  ) : privacyState === 'followers' ? (
+                    <span className="flex items-center gap-1.5 text-[12px] text-accent/70 font-medium">
+                      <Users size={13} />
+                      Friends
                     </span>
                   ) : (
                     <span className="flex items-center gap-1.5 text-[12px] text-text-muted/40 font-medium">

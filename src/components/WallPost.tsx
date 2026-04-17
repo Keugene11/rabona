@@ -8,7 +8,8 @@ import type { WallPost } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
-import MentionText from '@/components/MentionText'
+
+const TRUNCATE_LENGTH = 280
 
 interface WallPostItemProps {
   post: WallPost
@@ -16,9 +17,10 @@ interface WallPostItemProps {
   wallOwnerId: string
   onDelete: (postId: string) => void
   isFriend?: boolean
+  truncate?: boolean
 }
 
-export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelete, isFriend = false }: WallPostItemProps) {
+export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelete, isFriend = false, truncate = false }: WallPostItemProps) {
   const supabase = createClient()
   const canDelete = currentUserId === post.author_id || currentUserId === wallOwnerId
   const canEdit = currentUserId === post.author_id
@@ -26,10 +28,18 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
   const [content, setContent] = useState(post.content)
+  const [expanded, setExpanded] = useState(false)
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const shouldTruncate = truncate && !expanded && content.length > TRUNCATE_LENGTH
 
   async function handleDelete() {
-    // Nullify notification references before deleting so notifications don't cascade-delete
-    await supabase.from('notifications').update({ post_id: null }).eq('post_id', post.id).eq('post_type', 'wall_post')
+    // Nullify notification references via server route (uses service role for cross-user updates)
+    await fetch('/api/cleanup-notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: post.id, post_type: 'wall_post' }),
+    })
     await supabase.from('wall_posts').delete().eq('id', post.id)
     onDelete(post.id)
   }
@@ -75,10 +85,16 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
               <Pencil size={13} />
             </button>
           )}
-          {canDelete && (
-            <button onClick={handleDelete} className="press text-text-muted hover:text-red-500 p-1">
+          {canDelete && !showDeleteConfirm && (
+            <button onClick={() => setShowDeleteConfirm(true)} className="press text-text-muted hover:text-red-500 p-1">
               <Trash2 size={14} />
             </button>
+          )}
+          {showDeleteConfirm && (
+            <div className="flex items-center gap-1.5">
+              <button onClick={handleDelete} className="press text-red-500 text-[11px] font-medium">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="press text-text-muted text-[11px] font-medium">Cancel</button>
+            </div>
           )}
         </div>
       </div>
@@ -103,7 +119,14 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
         </div>
       ) : (
         <>
-          {content && <p className="text-[14px] mt-2.5 whitespace-pre-wrap"><MentionText text={content} /></p>}
+          {content && (
+            <p className="text-[14px] mt-2.5 whitespace-pre-wrap">
+              {shouldTruncate ? content.slice(0, TRUNCATE_LENGTH).trimEnd() + '...' : content}
+              {shouldTruncate && (
+                <button onClick={() => setExpanded(true)} className="press text-accent font-medium ml-1">more</button>
+              )}
+            </p>
+          )}
           {post.media_url && (
             <div className="mt-2.5">
               {isVideo(post.media_url) ? (

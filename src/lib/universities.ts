@@ -6,10 +6,10 @@ export interface University {
 }
 
 export const UNIVERSITY: University = {
-  slug: 'cornell',
-  name: 'Cornell University',
-  shortName: 'Cornell',
-  emailDomain: 'cornell.edu',
+  slug: 'stonybrook',
+  name: 'Stony Brook University',
+  shortName: 'Stony Brook',
+  emailDomain: 'stonybrook.edu',
 }
 
 export const UNIVERSITIES: University[] = [UNIVERSITY]

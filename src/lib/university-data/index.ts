@@ -15,7 +15,7 @@ const cache: Record<string, UniversityData> = {}
 export async function getUniversityData(slug: string): Promise<UniversityData> {
   if (cache[slug]) return cache[slug]
 
-  const mod: UniversityData = await import('./cornell')
+  const mod: UniversityData = await import('./stonybrook')
 
   const data: UniversityData = {
     MAJORS: mod.MAJORS,

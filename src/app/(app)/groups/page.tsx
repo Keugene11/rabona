@@ -34,7 +34,7 @@ export default function GroupsPage() {
 
     // Get current user's university
     const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-    const myUniversity = myProfile?.university || 'cornell'
+    const myUniversity = myProfile?.university || 'stonybrook'
 
     // Get all groups for this university
     const { data: groups } = await supabase
@@ -62,8 +62,12 @@ export default function GroupsPage() {
     setLoading(false)
   }
 
+  const q = search.toLowerCase()
+  const filteredMy = search
+    ? myGroups.filter(g => g.name.toLowerCase().includes(q) || g.description.toLowerCase().includes(q))
+    : myGroups
   const filteredAll = search
-    ? allGroups.filter(g => g.name.toLowerCase().includes(search.toLowerCase()) || g.description.toLowerCase().includes(search.toLowerCase()))
+    ? allGroups.filter(g => g.name.toLowerCase().includes(q) || g.description.toLowerCase().includes(q))
     : allGroups
 
   if (loading) {
@@ -77,18 +81,32 @@ export default function GroupsPage() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-[24px] font-bold tracking-tight">Groups</h1>
+        <div>
+          <h1 className="text-[24px] font-bold tracking-tight">Groups</h1>
+          <div className="accent-bar" />
+        </div>
         <Link href="/groups/create" className="press bg-accent text-white rounded-xl px-4 py-2 text-[13px] font-medium flex items-center gap-1.5">
           <Plus size={14} /> Create
         </Link>
       </div>
 
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search groups..."
+          className="w-full bg-bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-text-muted/50 outline-none focus:border-text-muted transition-colors"
+        />
+      </div>
+
       {/* My Groups */}
-      {myGroups.length > 0 && (
+      {filteredMy.length > 0 && (
         <div className="mb-6">
           <h2 className="text-[14px] font-semibold text-text-muted mb-2">Your Groups</h2>
           <div className="space-y-2">
-            {myGroups.map(g => (
+            {filteredMy.map(g => (
               <GroupCard key={g.id} group={g} />
             ))}
           </div>
@@ -98,16 +116,6 @@ export default function GroupsPage() {
       {/* Browse All */}
       <div>
         <h2 className="text-[14px] font-semibold text-text-muted mb-2">Browse Groups</h2>
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search groups..."
-            className="w-full bg-bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-text-muted/50 outline-none focus:border-text-muted transition-colors"
-          />
-        </div>
         {filteredAll.length === 0 ? (
           <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
             <p className="text-text-muted text-[14px]">
@@ -130,11 +138,11 @@ function GroupCard({ group }: { group: Group }) {
   return (
     <Link href={`/groups/${group.id}`} className="press block">
       <div className="bg-bg-card border border-border rounded-2xl p-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors">
-        <div className="w-12 h-12 rounded-xl bg-bg-input border border-border overflow-hidden flex-shrink-0 flex items-center justify-center">
+        <div className="w-20 h-20 rounded-xl bg-bg-input border border-border overflow-hidden flex-shrink-0 flex items-center justify-center">
           {group.image_url ? (
             <img src={group.image_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <Users size={20} className="text-text-muted" />
+            <Users size={28} className="text-text-muted" />
           )}
         </div>
         <div className="flex-1 min-w-0">

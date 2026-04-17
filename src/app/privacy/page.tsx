@@ -53,7 +53,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">7. Eligibility</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          Rabona is available only to Cornell University students with a valid @cornell.edu email address.
+          Rabona is available to anyone 13 years of age or older.
         </p>
       </section>
 
@@ -68,7 +68,7 @@ export default function PrivacyPage() {
         <h2 className="text-[18px] font-bold mb-2">9. Contact</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
           If you have questions about this privacy policy, contact us at{' '}
-          <a href="mailto:rabona591@gmail.com" className="text-accent">rabona591@gmail.com</a>.
+          <a href="mailto:keugenelee11@gmail.com" className="text-accent">keugenelee11@gmail.com</a>.
         </p>
       </section>
 
