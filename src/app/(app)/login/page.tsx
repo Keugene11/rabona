@@ -79,7 +79,6 @@ export default function LoginPage() {
 
         <ul className="text-[13px] text-text-muted mt-5 text-left space-y-2 list-disc pl-5">
           <li>Write short updates and posts for your friends to read and like</li>
-          <li>Connect with other students at your university</li>
           <li>Join and make groups</li>
         </ul>
 
