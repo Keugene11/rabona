@@ -13,14 +13,11 @@ import { HIDDEN_EMAILS } from '@/lib/constants'
 interface Filters {
   name: string
   residence_hall: string
-  course: string
   gender: string
   major: string
   class_year: string
   hometown: string
   high_school: string
-  fraternity_sorority: string
-  clubs: string
   relationship_status: string
   interested_in: string
 }
@@ -28,14 +25,11 @@ interface Filters {
 const emptyFilters: Filters = {
   name: '',
   residence_hall: '',
-  course: '',
   gender: '',
   major: '',
   class_year: '',
   hometown: '',
   high_school: '',
-  fraternity_sorority: '',
-  clubs: '',
   relationship_status: '',
   interested_in: '',
 }
@@ -77,7 +71,7 @@ export default function DirectoryPage() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, major, class_year, gender, residence_hall, courses, hometown, high_school, fraternity_sorority, clubs, relationship_status, interested_in, last_seen')
+        .select('id, full_name, avatar_url, major, class_year, gender, residence_hall, hometown, high_school, relationship_status, interested_in, last_seen')
         .eq('university', myUniversity)
         .not('email', 'in', `(${HIDDEN_EMAILS.join(',')})`)
         .order('last_seen', { ascending: false, nullsFirst: false })
@@ -101,11 +95,8 @@ export default function DirectoryPage() {
     if (filters.major && p.major !== filters.major) return false
     if (filters.gender && p.gender !== filters.gender) return false
     if (filters.class_year && p.class_year?.toString() !== filters.class_year) return false
-    if (filters.course && !p.courses?.toUpperCase().includes(filters.course.toUpperCase())) return false
     if (filters.hometown && !p.hometown?.toLowerCase().includes(filters.hometown.toLowerCase())) return false
     if (filters.high_school && !p.high_school?.toLowerCase().includes(filters.high_school.toLowerCase())) return false
-    if (filters.fraternity_sorority && p.fraternity_sorority !== filters.fraternity_sorority) return false
-    if (filters.clubs && p.clubs !== filters.clubs) return false
     if (filters.relationship_status && p.relationship_status !== filters.relationship_status) return false
     if (filters.interested_in && p.interested_in !== filters.interested_in) return false
     return true
@@ -123,10 +114,7 @@ export default function DirectoryPage() {
         filters={filters}
         onChange={setFilters}
         majors={uniData?.MAJORS}
-        greekLife={uniData?.GREEK_LIFE}
-        clubs={uniData?.CLUBS}
         residenceHalls={uniData?.RESIDENCE_HALLS}
-        hasCourses={Object.keys(uniData?.COURSES || {}).length > 0}
       />
 
       <div className="mt-4">

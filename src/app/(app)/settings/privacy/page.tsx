@@ -19,7 +19,7 @@ interface FieldConfig {
   searchable?: boolean
 }
 
-function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: string[], greekLife: string[]): FieldConfig[] {
+function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: string[]): FieldConfig[] {
   return [
     { field: 'email', label: 'Email', icon: Mail },
     { field: 'major', label: 'Major', icon: GraduationCap, type: 'select', options: majors, searchable: true },
@@ -37,7 +37,6 @@ function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: 
     { field: 'political_views', label: 'Political Views', icon: Globe, type: 'select', options: POLITICAL_VIEWS },
     { field: 'phone', label: 'Phone', icon: Phone, type: 'tel' },
     { field: 'websites', label: 'Website', icon: Globe },
-    { field: 'fraternity_sorority', label: 'Greek Life', icon: Users, type: 'select', options: greekLife, searchable: true },
   ]
 }
 
@@ -70,7 +69,6 @@ export default function PrivacySettingsPage() {
           ud.MAJORS,
           ud.MINORS,
           ud.RESIDENCE_HALLS.map(h => typeof h === 'string' ? h : h.value),
-          ud.GREEK_LIFE,
         ))
       }
       setLoading(false)

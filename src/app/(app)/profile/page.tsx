@@ -21,10 +21,6 @@ export default function ProfilePage() {
   const [wallPosts, setWallPosts] = useState<WallPost[]>([])
   const [userGroups, setUserGroups] = useState<Group[]>([])
   const [editing, setEditing] = useState<string | null>(null)
-  const [courseFilter, setCourseFilter] = useState('')
-  const [courseOpen, setCourseOpen] = useState(false)
-  const [clubFilter, setClubFilter] = useState('')
-  const [clubOpen, setClubOpen] = useState(false)
   const [musicInput, setMusicInput] = useState('')
   const [movieInput, setMovieInput] = useState('')
   const [friends, setFriends] = useState<Profile[]>([])
@@ -84,7 +80,7 @@ export default function ProfilePage() {
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
-    'favorite_quotes', 'courses', 'clubs', 'fraternity_sorority',
+    'favorite_quotes',
   ])
 
   const updateField = useCallback((field: string, value: string | number | null) => {
@@ -126,8 +122,6 @@ export default function ProfilePage() {
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
   if (!profile) return null
 
-  const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
-  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
   const musicTags = profile.favorite_music ? profile.favorite_music.split(', ').filter(Boolean) : []
   const movieTags = profile.favorite_movies ? profile.favorite_movies.split(', ').filter(Boolean) : []
   const empty = 'text-text-muted/40 italic cursor-pointer'
@@ -138,23 +132,6 @@ export default function ProfilePage() {
   const resHalls = uniData?.RESIDENCE_HALLS || []
   const hallGroups: Record<string, typeof resHalls> = {}
   for (const h of resHalls) { const g = h.group || 'Other'; if (!hallGroups[g]) hallGroups[g] = []; hallGroups[g].push(h) }
-
-  // Course helpers
-  const sortedDepts = uniData ? Object.entries(uniData.COURSES).sort((a, b) => a[0].localeCompare(b[0])) : []
-  const filteredDepts = sortedDepts.map(([code, dept]) => ({
-    code, name: dept.name,
-    courses: dept.courses.map(n => `${code} ${n}`).filter(c => !courses.includes(c)).filter(c => {
-      if (!courseFilter) return true
-      const q = courseFilter.trim().toUpperCase()
-      if (/^[A-Z]{2,4}$/.test(q)) return code === q
-      if (/^[A-Z]{2,4}\s/.test(q)) return c.toUpperCase().startsWith(q)
-      return dept.name.toLowerCase().includes(courseFilter.toLowerCase())
-    })
-  })).filter(d => d.courses.length > 0)
-
-  // Club helpers
-  const allClubs = (uniData?.CLUBS || []).filter(c => !clubs.includes(c))
-  const filteredClubs = allClubs.filter(c => !clubFilter || c.toLowerCase().includes(clubFilter.toLowerCase()))
 
   // Editable row: click to open edit sheet
   function EditableRow({ icon: Icon, label, field, value, type = 'text', options }: {
@@ -195,9 +172,6 @@ export default function ProfilePage() {
       interested_in: { label: 'Interested In', type: 'select', options: INTERESTED_IN.map(s => ({ value: s, label: s })) },
       looking_for: { label: 'Looking For', type: 'select', options: LOOKING_FOR.map(s => ({ value: s, label: s })) },
       political_views: { label: 'Political Views', type: 'select', options: POLITICAL_VIEWS.map(p => ({ value: p, label: p })) },
-      fraternity_sorority: { label: 'Fraternity / Sorority', type: 'select', options: (uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g })) },
-      courses: { label: 'Courses', type: 'multiselect', options: sortedDepts.flatMap(([code, dept]) => dept.courses.map(n => ({ value: `${code} ${n}`, label: `${code} ${n}`, group: `${code} — ${dept.name}` }))) },
-      clubs: { label: 'Clubs', type: 'multiselect', options: (uniData?.CLUBS || []).map(c => ({ value: c, label: c })) },
       email: { label: 'Email', type: 'text' },
       phone: { label: 'Phone', type: 'tel' },
       websites: { label: 'Website', type: 'text' },
@@ -524,19 +498,6 @@ export default function ProfilePage() {
             <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} options={(uniData?.MINORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
             {resHalls.length > 0 && <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />}
-            <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
-          </div>
-
-          {/* Courses */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('courses')}>
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
-            <p className={`text-[13px] cursor-pointer ${courses.length > 0 ? 'hover:underline' : empty}`}>{courses.length > 0 ? courses.join(', ') : 'Click to add...'}</p>
-          </div>
-
-          {/* Clubs */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('clubs')}>
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Clubs</p>
-            <p className={`text-[13px] cursor-pointer ${clubs.length > 0 ? 'hover:underline' : empty}`}>{clubs.length > 0 ? clubs.join(', ') : 'Click to add...'}</p>
           </div>
 
           {/* Personal */}

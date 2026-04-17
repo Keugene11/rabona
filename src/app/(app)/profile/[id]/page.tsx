@@ -210,9 +210,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     if (privateFields.includes(`${field}:followers`)) return isFriend
     return true
   }
-  const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
-  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
-
   return (
     <div className="max-w-5xl mx-auto px-4 pt-12 pb-28">
 
@@ -466,23 +463,10 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Courses */}
-          {courses.length > 0 && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
-              <p className="text-[13px]">{courses.join(', ')}</p>
-            </div>
-          )}
-
           {/* Campus */}
-          {(show('residence_hall', profile.residence_hall) || show('fraternity_sorority', profile.fraternity_sorority) || clubs.length > 0) && (
+          {show('residence_hall', profile.residence_hall) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Campus</p>
-              <div className="space-y-0.5">
-                {show('residence_hall', profile.residence_hall) && <div className="flex items-center gap-2 text-[13px] py-0.5"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>}
-                {show('fraternity_sorority', profile.fraternity_sorority) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Greek Life:</span> <span>{profile.fraternity_sorority}</span></div>}
-                {clubs.length > 0 && <div className="flex items-start gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0 mt-0.5" /><span>{clubs.join(', ')}</span></div>}
-              </div>
+              <div className="flex items-center gap-2 text-[13px]"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>
             </div>
           )}
 
