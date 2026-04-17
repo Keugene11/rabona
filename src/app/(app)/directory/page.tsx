@@ -58,7 +58,7 @@ export default function DirectoryPage() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, major, class_year, gender, hometown, high_school, relationship_status, interested_in, last_seen, job')
+        .select('id, full_name, avatar_url, major, class_year, gender, hometown, high_school, relationship_status, interested_in, last_seen, job, private_fields')
         .not('email', 'in', `(${HIDDEN_EMAILS.join(',')})`)
         .order('last_seen', { ascending: false, nullsFirst: false })
 

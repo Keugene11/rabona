@@ -15,7 +15,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [amUser1, setAmUser1] = useState(false)
   const [otherReadAt, setOtherReadAt] = useState<string | null>(null)
   const [likedMessages, setLikedMessages] = useState<Set<string>>(new Set())
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
@@ -99,7 +98,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       // Verify current user is a participant
       if (conv.user1_id !== user.id && conv.user2_id !== user.id) return
       const isUser1 = conv.user1_id === user.id
-      setAmUser1(isUser1)
       setOtherUser((isUser1 ? conv.user2 : conv.user1) as Profile)
       setOtherReadAt(isUser1 ? conv.user2_read_at : conv.user1_read_at)
 
@@ -163,14 +161,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       })
     }
 
-    // Update conversation with last message info
-    const now = new Date().toISOString()
-    await supabase.from('conversations').update({
-      last_message_at: now,
-      last_message_content: text,
-      last_message_sender_id: currentUserId,
-      ...(amUser1 ? { user1_read_at: now } : { user2_read_at: now }),
-    }).eq('id', conversationId)
+    // last_message_* columns on conversations are populated by a DB trigger
+    // on messages INSERT. The sender's read timestamp is also set by the trigger.
 
     // Create inbox notification with message content
     if (otherUser) {
