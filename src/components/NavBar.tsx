@@ -10,6 +10,7 @@ const navItems = [
   { href: '/feed', icon: Home, label: 'Feed' },
   { href: '/directory', icon: Search, label: 'Directory' },
   { href: '/groups', icon: UsersRound, label: 'Groups' },
+  { href: '/messages', icon: MessageCircle, label: 'Messages' },
   { href: '/notifications', icon: Inbox, label: 'Inbox', hasBadge: true },
   { href: '/profile', icon: User, label: 'Profile' },
 ]
