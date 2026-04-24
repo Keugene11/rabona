@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, BookOpen, MapPin, Home, School, Cake, Heart, Globe, Mail, Phone, Users, Pencil } from 'lucide-react'
+import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, Home, School, Cake, Heart, Globe, Mail, Phone, Users, Pencil } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
-import { getUniversityData } from '@/lib/university-data'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
@@ -20,13 +19,10 @@ interface FieldConfig {
   searchable?: boolean
 }
 
-function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: string[], greekLife: string[]): FieldConfig[] {
+function buildPrivacyFields(): FieldConfig[] {
   return [
     { field: 'email', label: 'Email', icon: Mail },
-    { field: 'major', label: 'Major', icon: GraduationCap, type: 'select', options: majors, searchable: true },
-    { field: 'second_major', label: 'Second Major', icon: GraduationCap, type: 'select', options: majors, searchable: true },
-    { field: 'minor', label: 'Minor', icon: BookOpen, type: 'select', options: minors, searchable: true },
-    { field: 'residence_hall', label: 'Dorm', icon: MapPin, type: 'select', options: residenceHalls, searchable: true },
+    { field: 'major', label: 'Major', icon: GraduationCap },
     { field: 'hometown', label: 'Hometown', icon: Home },
     { field: 'high_school', label: 'High School', icon: School },
     { field: 'birthday', label: 'Birthday', icon: Cake, type: 'birthday' },
@@ -38,7 +34,6 @@ function buildPrivacyFields(majors: string[], minors: string[], residenceHalls: 
     { field: 'political_views', label: 'Political Views', icon: Globe, type: 'select', options: POLITICAL_VIEWS },
     { field: 'phone', label: 'Phone', icon: Phone, type: 'tel' },
     { field: 'websites', label: 'Website', icon: Globe },
-    { field: 'fraternity_sorority', label: 'Greek Life', icon: Users, type: 'select', options: greekLife, searchable: true },
   ]
 }
 
@@ -68,13 +63,7 @@ export default function PrivacySettingsPage() {
         if (data.private_fields) {
           setPrivateFields(data.private_fields.split(',').filter(Boolean))
         }
-        const ud = await getUniversityData(data.university || 'stonybrook')
-        setPrivacyFields(buildPrivacyFields(
-          ud.MAJORS,
-          ud.MINORS,
-          ud.RESIDENCE_HALLS.map(h => typeof h === 'string' ? h : h.value),
-          ud.GREEK_LIFE,
-        ))
+        setPrivacyFields(buildPrivacyFields())
       }
       setLoading(false)
     }
