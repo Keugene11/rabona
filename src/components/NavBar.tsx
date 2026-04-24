@@ -30,7 +30,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/feed', outline: HomeOutline, solid: HomeSolid, label: 'Home' },
-  { href: '/directory', outline: SearchOutline, solid: SearchSolid, label: 'Directory' },
+  { href: '/friends', outline: SearchOutline, solid: SearchSolid, label: 'Friends' },
   { href: '/messages', outline: ChatOutline, solid: ChatSolid, label: 'Messages' },
   { href: '/notifications', outline: InboxOutline, solid: InboxSolid, label: 'Inbox', hasBadge: true },
   { href: '/profile', outline: UserOutline, solid: UserSolid, label: 'Profile' },

@@ -558,7 +558,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : (
-              <Link href="/directory" className="text-[13px] text-accent press">Find people</Link>
+              <Link href="/friends" className="text-[13px] text-accent press">Find people</Link>
             )}
           </div>
 

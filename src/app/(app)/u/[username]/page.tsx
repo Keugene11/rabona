@@ -19,7 +19,7 @@ export default function UsernameRedirectPage({ params }: { params: Promise<{ use
       .maybeSingle()
       .then(({ data }) => {
         if (data?.id) router.replace(`/profile/${data.id}`)
-        else router.replace('/directory')
+        else router.replace('/friends')
       })
   }, [username, router])
 

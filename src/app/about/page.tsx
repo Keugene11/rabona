@@ -22,8 +22,8 @@ export default function AboutPage() {
           <div className="bg-bg-card border border-border rounded-2xl p-4 flex gap-4">
             <Search size={20} className="text-accent flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-[15px] font-semibold mb-1">Directory</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Browse everyone on Rabona. Filter by university, major, class year, hometown, and more to find people you know or want to meet.</p>
+              <h3 className="text-[15px] font-semibold mb-1">Friends</h3>
+              <p className="text-[13px] text-text-muted leading-relaxed">See who you've added, accept friend requests, and share your invite link to bring more people in.</p>
             </div>
           </div>
 
@@ -106,7 +106,7 @@ export default function AboutPage() {
           </li>
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">3</span>
-            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Find people</span> — use the directory to search for friends.</p>
+            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Invite friends</span> — share your invite link; everyone who signs up via it auto-friends you.</p>
           </li>
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">4</span>

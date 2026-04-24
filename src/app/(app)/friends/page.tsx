@@ -2,18 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, UserCheck, UserX } from 'lucide-react'
+import { Loader2, UserCheck, UserX, Search } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
+import InviteLinkCard from '@/components/InviteLinkCard'
 
 export default function FriendsPage() {
   const supabase = createClient()
   const [tab, setTab] = useState<'friends' | 'requests'>('friends')
+  const [self, setSelf] = useState<Profile | null>(null)
   const [friends, setFriends] = useState<Profile[]>([])
   const [requests, setRequests] = useState<{ id: string; profile: Profile }[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState('')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     loadData()
@@ -24,6 +27,14 @@ export default function FriendsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
+
+    // Load self for the top card + invite link.
+    const { data: me } = await supabase
+      .from('profiles')
+      .select(PROFILE_PUBLIC_COLUMNS)
+      .eq('id', user.id)
+      .maybeSingle<Profile>()
+    if (me) setSelf(me)
 
     // Load accepted friends (either direction)
     const { data: friendData } = await supabase
@@ -86,7 +97,7 @@ export default function FriendsPage() {
     )
   }
 
-  function UserRow({ user: u }: { user: Profile }) {
+  function UserRow({ user: u, trailing }: { user: Profile; trailing?: React.ReactNode }) {
     return (
       <Link href={`/profile/${u.id}`} className="press block">
         <div className="bg-bg-card border border-border rounded-2xl p-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors">
@@ -99,23 +110,32 @@ export default function FriendsPage() {
               </div>
             )}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold truncate">{u.full_name}</p>
             <p className="text-[12px] text-text-muted truncate">
               {u.major}{u.class_year ? ` '${u.class_year.toString().slice(-2)}` : ''}
             </p>
           </div>
+          {trailing}
         </div>
       </Link>
     )
   }
 
+  const q = query.trim().toLowerCase()
+  const filteredFriends = q
+    ? friends.filter(f => f.full_name?.toLowerCase().includes(q))
+    : friends
+  const showSelf = self && (!q || self.full_name?.toLowerCase().includes(q))
+
   return (
-    <div className="max-w-xl mx-auto px-4 pt-6 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-28">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Friends</h1>
         <div className="accent-bar" />
       </div>
+
+      {self?.username && <InviteLinkCard username={self.username} className="mb-4" />}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-bg-input rounded-xl p-1 mb-4">
@@ -138,15 +158,37 @@ export default function FriendsPage() {
       </div>
 
       {tab === 'friends' && (
-        <div className="space-y-2">
-          {friends.length === 0 ? (
-            <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
-              <p className="text-text-muted text-[14px]">No friends yet. Use the directory to find people.</p>
-            </div>
-          ) : (
-            friends.map(u => <UserRow key={u.id} user={u} />)
-          )}
-        </div>
+        <>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name..."
+              className="w-full bg-bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-text-muted/50 outline-none focus:border-text-muted transition-colors"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {showSelf && self && (
+              <UserRow
+                user={self}
+                trailing={<span className="text-[11px] text-text-muted font-medium px-2 py-0.5 rounded-full bg-bg-input">You</span>}
+              />
+            )}
+            {filteredFriends.map(u => <UserRow key={u.id} user={u} />)}
+            {!showSelf && filteredFriends.length === 0 && (
+              <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
+                <p className="text-text-muted text-[14px]">
+                  {friends.length === 0
+                    ? 'No friends yet. Share your invite link above to get started.'
+                    : 'No friends match that name.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {tab === 'requests' && (
