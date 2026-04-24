@@ -131,7 +131,7 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
         </div>
       </div>
       {content && (
-        <p className="text-[14px] mt-2.5 whitespace-pre-wrap">
+        <p className="text-[15px] mt-2.5 whitespace-pre-wrap">
           <MentionText text={displayContent} />
           {shouldTruncate && <span className="text-accent font-medium ml-1">more</span>}
         </p>

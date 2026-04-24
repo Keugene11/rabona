@@ -410,7 +410,7 @@ function CommentItem({ comment, userId, onDelete, onReply, liked, likeCount, onT
             {comment.author?.full_name || 'Unknown'}
           </Link>
           {comment.content && (
-            <p className="text-[13px] whitespace-pre-wrap break-words">
+            <p className="text-[14px] whitespace-pre-wrap break-words">
               <MentionText text={comment.content} />
             </p>
           )}
