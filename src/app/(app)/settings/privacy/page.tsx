@@ -22,6 +22,7 @@ interface FieldConfig {
 function buildPrivacyFields(): FieldConfig[] {
   return [
     { field: 'email', label: 'Email', icon: Mail },
+    { field: 'university', label: 'University', icon: School },
     { field: 'major', label: 'Major', icon: GraduationCap },
     { field: 'hometown', label: 'Hometown', icon: Home },
     { field: 'high_school', label: 'High School', icon: School },

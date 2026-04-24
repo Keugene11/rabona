@@ -45,7 +45,7 @@ export default function ProfilePage() {
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'major',
+    'full_name', 'about_me', 'major', 'university',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
@@ -195,6 +195,10 @@ export default function ProfilePage() {
           {/* Academics */}
           <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
             <p className="text-[13px] font-semibold">Academics</p>
+            <div>
+              <label className={labelClass}>University</label>
+              <input type="text" value={profile.university || ''} onChange={(e) => updateField('university', e.target.value)} className={inputClass} placeholder="Where do you go?" />
+            </div>
             <div>
               <label className={labelClass}>Major</label>
               <input type="text" value={profile.major || ''} onChange={(e) => updateField('major', e.target.value)} className={inputClass} placeholder="What do you study?" />

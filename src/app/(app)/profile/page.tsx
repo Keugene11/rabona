@@ -76,7 +76,7 @@ export default function ProfilePage() {
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'major',
+    'full_name', 'about_me', 'major', 'university',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
@@ -154,6 +154,7 @@ export default function ProfilePage() {
       full_name: { label: 'Name', type: 'text' },
       about_me: { label: 'About', type: 'textarea' },
       major: { label: 'Major', type: 'text' },
+      university: { label: 'University', type: 'text' },
       hometown: { label: 'Hometown', type: 'text' },
       high_school: { label: 'High School', type: 'text' },
       birthday: { label: 'Birthday', type: 'birthday' },
@@ -485,6 +486,7 @@ export default function ProfilePage() {
 
           {/* Academics */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
+            <EditableRow icon={School} label="University" field="university" value={profile.university} />
             <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
           </div>

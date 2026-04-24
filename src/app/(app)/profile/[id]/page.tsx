@@ -455,10 +455,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           )}
 
           {/* Academics */}
-          {(show('major', profile.major) || profile.class_year) && (
+          {(show('university', profile.university) || show('major', profile.major) || profile.class_year) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
               <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Academics</p>
               <div className="space-y-0.5">
+                {show('university', profile.university) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.university}</span></div>}
                 {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
                 {profile.class_year && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Class of</span> <span>{profile.class_year}</span></div>}
               </div>
