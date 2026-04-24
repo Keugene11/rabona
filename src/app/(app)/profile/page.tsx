@@ -34,6 +34,9 @@ export default function ProfilePage() {
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [origin, setOrigin] = useState('')
+
+  useEffect(() => { setOrigin(window.location.origin) }, [])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [uniData, setUniData] = useState<UniversityData | null>(null)
 
@@ -518,11 +521,11 @@ export default function ProfilePage() {
           </div>
 
           {/* Invite Link */}
-          {profile.username && (
+          {profile.username && origin && (
             <button
               type="button"
               onClick={async () => {
-                const url = `${window.location.origin}/join/${profile.username}`
+                const url = `${origin}/join/${profile.username}`
                 try {
                   await navigator.clipboard.writeText(url)
                   setInviteCopied(true)
@@ -533,10 +536,10 @@ export default function ProfilePage() {
               }}
               className="press bg-bg-card border border-border rounded-2xl px-4 py-3 w-full flex items-center gap-2.5 text-left"
             >
-              {inviteCopied ? <Check size={16} className="text-accent" /> : <Link2 size={16} className="text-text-muted" />}
+              {inviteCopied ? <Check size={16} className="text-accent flex-shrink-0" /> : <Link2 size={16} className="text-text-muted flex-shrink-0" />}
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Invite link</p>
-                <p className="text-[13px] truncate">{inviteCopied ? 'Copied!' : `Share to auto-friend new signups`}</p>
+                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Invite link{inviteCopied ? ' · Copied!' : ''}</p>
+                <p className="text-[13px] font-mono truncate">{origin.replace(/^https?:\/\//, '')}/join/{profile.username}</p>
               </div>
             </button>
           )}
