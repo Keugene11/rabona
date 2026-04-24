@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Link2, Check } from 'lucide-react'
 import type { WallPost } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import WallPostItem from '@/components/WallPost'
@@ -18,6 +18,8 @@ export default function FeedPage() {
   const [friendIds, setFriendIds] = useState<string[]>([])
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
+  const [username, setUsername] = useState('')
+  const [inviteCopied, setInviteCopied] = useState(false)
   const PAGE_SIZE = 20
 
   useEffect(() => {
@@ -29,6 +31,10 @@ export default function FeedPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setCurrentUserId(user.id)
+
+    // Grab the username so we can render the invite link.
+    supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.username) setUsername(data.username) })
 
     // Get friends for the isFriend prop on posts
     const { data: friendships } = await supabase
@@ -139,6 +145,30 @@ export default function FeedPage() {
         <div className="accent-bar" />
         <p className="text-[13px] text-text-muted mt-2">Posts from you and your friends.</p>
       </div>
+
+      {/* Invite link */}
+      {username && (
+        <button
+          type="button"
+          onClick={async () => {
+            const url = `${window.location.origin}/join/${username}`
+            try {
+              await navigator.clipboard.writeText(url)
+              setInviteCopied(true)
+              setTimeout(() => setInviteCopied(false), 1500)
+            } catch {
+              window.prompt('Copy your invite link:', url)
+            }
+          }}
+          className="press bg-bg-card border border-border rounded-2xl px-4 py-3 w-full flex items-center gap-2.5 text-left mb-4"
+        >
+          {inviteCopied ? <Check size={16} className="text-accent flex-shrink-0" /> : <Link2 size={16} className="text-text-muted flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Your invite link</p>
+            <p className="text-[13px] truncate">{inviteCopied ? 'Copied!' : `Share to auto-friend new signups`}</p>
+          </div>
+        </button>
+      )}
 
       {/* Compose */}
       <div className="mb-4">
