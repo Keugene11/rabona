@@ -10,7 +10,6 @@ A social network — open to anyone. Think early Facebook: profiles, wall posts,
 - **Friends** — Send/accept friend requests, browse your network
 - **Pokes** — Poke your friends
 - **Messaging** — Direct conversations between users
-- **Groups** — Create and join groups with their own walls
 - **Directory** — Search and discover other users
 - **Privacy Controls** — Choose which profile fields are visible to others
 

@@ -18,7 +18,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">2. How We Use Your Information</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          We use your information to provide and improve Rabona, including displaying your profile to other users, enabling social features like friends, messaging, and groups, and sending you notifications about activity on your account.
+          We use your information to provide and improve Rabona, including displaying your profile to other users, enabling social features like friends and messaging, and sending you notifications about activity on your account.
         </p>
       </section>
 

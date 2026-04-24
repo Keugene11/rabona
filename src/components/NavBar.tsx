@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import {
   HomeIcon as HomeOutline,
   MagnifyingGlassIcon as SearchOutline,
-  UsersIcon as UsersOutline,
   ChatBubbleOvalLeftIcon as ChatOutline,
   InboxIcon as InboxOutline,
   UserIcon as UserOutline,
@@ -14,7 +13,6 @@ import {
 import {
   HomeIcon as HomeSolid,
   MagnifyingGlassIcon as SearchSolid,
-  UsersIcon as UsersSolid,
   ChatBubbleOvalLeftIcon as ChatSolid,
   InboxIcon as InboxSolid,
   UserIcon as UserSolid,
@@ -33,7 +31,6 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: '/feed', outline: HomeOutline, solid: HomeSolid, label: 'Home' },
   { href: '/directory', outline: SearchOutline, solid: SearchSolid, label: 'Directory' },
-  { href: '/groups', outline: UsersOutline, solid: UsersSolid, label: 'Groups' },
   { href: '/messages', outline: ChatOutline, solid: ChatSolid, label: 'Messages' },
   { href: '/notifications', outline: InboxOutline, solid: InboxSolid, label: 'Inbox', hasBadge: true },
   { href: '/profile', outline: UserOutline, solid: UserSolid, label: 'Profile' },

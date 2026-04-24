@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Hand, UserPlus, UserCheck, UserX, Heart, MessageSquare, MessageCircle, Users, Check, AtSign } from 'lucide-react'
+import { Loader2, Hand, UserPlus, UserCheck, UserX, Heart, MessageSquare, MessageCircle, Check, AtSign } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/types'
@@ -24,8 +24,6 @@ interface Notification {
   post_content?: string
   wall_owner_id?: string
   conversation_id?: string
-  group_id?: string
-  group_name?: string
 }
 
 export default function NotificationsPage() {
@@ -73,45 +71,11 @@ export default function NotificationsPage() {
         })
       }
 
-      // Fetch group_id for group_post notifications so we can link to the group
-      const groupPostIds = [...new Set(notifs.filter(n => n.post_type === 'group_post' && n.post_id).map(n => n.post_id!))]
-      if (groupPostIds.length > 0) {
-        const { data: groupPosts } = await supabase
-          .from('group_posts')
-          .select('id, group_id')
-          .in('id', groupPostIds)
-        const groupMap: Record<string, string> = {}
-        groupPosts?.forEach(gp => { groupMap[gp.id] = gp.group_id })
-        notifs.forEach(n => {
-          if (n.post_type === 'group_post' && n.post_id) {
-            n.group_id = groupMap[n.post_id]
-          }
-        })
-      }
-
-      // Fetch group names for group_join notifications
-      const groupJoinIds = [...new Set(notifs.filter(n => n.type === 'group_join' && n.post_type === 'group' && n.post_id).map(n => n.post_id!))]
-      if (groupJoinIds.length > 0) {
-        const { data: groups } = await supabase
-          .from('groups')
-          .select('id, name')
-          .in('id', groupJoinIds)
-        const nameMap: Record<string, string> = {}
-        groups?.forEach(g => { nameMap[g.id] = g.name })
-        notifs.forEach(n => {
-          if (n.type === 'group_join' && n.post_id && nameMap[n.post_id]) {
-            n.group_name = nameMap[n.post_id]
-            n.group_id = n.post_id
-          }
-        })
-      }
-
       // Fetch original post content for like/comment/friend_post notifications so the user sees which post
       const postRefNotifs = notifs.filter(n =>
         (n.type === 'like' || n.type === 'friend_like' || n.type === 'comment' || n.type === 'friend_comment' || n.type === 'friend_post') && n.post_id
       )
       const refWallIds = [...new Set(postRefNotifs.filter(n => n.post_type === 'wall_post').map(n => n.post_id!))]
-      const refGroupIds = [...new Set(postRefNotifs.filter(n => n.post_type === 'group_post').map(n => n.post_id!))]
       const postContentMap: Record<string, string> = {}
       const mediaFallback = (url: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) ? '[video]' : '[photo]'
       if (refWallIds.length > 0) {
@@ -122,16 +86,6 @@ export default function NotificationsPage() {
         wallPosts?.forEach(wp => {
           if (wp.content) postContentMap[wp.id] = wp.content
           else if (wp.media_url) postContentMap[wp.id] = mediaFallback(wp.media_url)
-        })
-      }
-      if (refGroupIds.length > 0) {
-        const { data: groupPosts } = await supabase
-          .from('group_posts')
-          .select('id, content, media_url')
-          .in('id', refGroupIds)
-        groupPosts?.forEach(gp => {
-          if (gp.content) postContentMap[gp.id] = gp.content
-          else if (gp.media_url) postContentMap[gp.id] = mediaFallback(gp.media_url)
         })
       }
       postRefNotifs.forEach(n => {
@@ -258,7 +212,6 @@ export default function NotificationsPage() {
     if (type === 'friend_accept') return <UserPlus size={12} className="text-accent flex-shrink-0" />
     if (type === 'message') return <MessageCircle size={12} className="text-accent flex-shrink-0" />
     if (type === 'poke') return <Hand size={12} className="text-accent flex-shrink-0" />
-    if (type === 'group_join') return <Users size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_post') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
@@ -277,7 +230,6 @@ export default function NotificationsPage() {
     if (type === 'friend_accept') return 'accepted your friend request'
     if (type === 'message') return 'sent you a message'
     if (type === 'poke') return 'poked you'
-    if (type === 'group_join') return 'joined your group'
     if (type === 'friend_post') return 'made a post'
     if (type === 'friend_comment') return 'commented on a post'
     if (type === 'friend_like') return 'liked a post'
@@ -303,10 +255,6 @@ export default function NotificationsPage() {
           {notifications.map(n => {
             const postLink = n.post_type === 'wall_post' && n.wall_owner_id
               ? `/profile/${n.wall_owner_id}`
-              : n.post_type === 'group_post' && n.group_id
-              ? `/groups/${n.group_id}`
-              : n.type === 'group_join' && n.group_id
-              ? `/groups/${n.group_id}`
               : null
             const showFriendActions = n.type === 'friend_request' && !handledRequests.has(n.actor_id)
 
@@ -358,11 +306,6 @@ export default function NotificationsPage() {
                   {n.type === 'friend_post' && (n.post_content || n.content) && (
                     <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-2">
                       &ldquo;{n.post_content || n.content}&rdquo;
-                    </p>
-                  )}
-                  {n.type === 'group_join' && n.group_name && (
-                    <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-1">
-                      {n.group_name}
                     </p>
                   )}
                   {n.type === 'message' && n.content && (

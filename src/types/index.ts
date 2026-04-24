@@ -94,38 +94,6 @@ export interface Message {
   sender?: Profile
 }
 
-export interface Group {
-  id: string
-  name: string
-  description: string
-  image_url: string | null
-  group_type: 'open' | 'closed'
-  university: string
-  created_by: string
-  created_at: string
-  creator?: Profile
-  member_count?: number
-}
-
-export interface GroupMember {
-  id: string
-  group_id: string
-  user_id: string
-  role: 'admin' | 'member'
-  joined_at: string
-  user?: Profile
-}
-
-export interface GroupPost {
-  id: string
-  group_id: string
-  author_id: string
-  content: string
-  media_url: string | null
-  created_at: string
-  author?: Profile
-}
-
 export interface Comment {
   id: string
   post_type: 'wall_post' | 'group_post'

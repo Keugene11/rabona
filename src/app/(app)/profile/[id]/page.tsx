@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Profile, WallPost, Group } from '@/types'
+import type { Profile, WallPost } from '@/types'
 import { EMAIL_HIDDEN_FROM_OTHERS } from '@/lib/constants'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import FriendButton from '@/components/FriendButton'
@@ -22,7 +22,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
   const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
   const [isFriend, setIsFriend] = useState(false)
-  const [userGroups, setUserGroups] = useState<Group[]>([])
   const [friends, setFriends] = useState<Profile[]>([])
   const [profileViews, setProfileViews] = useState<Profile[]>([])
   const [showViewers, setShowViewers] = useState(false)
@@ -105,22 +104,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       ).filter(p => p && !p.hidden_from_directory)
       const unique = Array.from(new Map(others.map(p => [p.id, p])).values())
       setFriends(unique)
-    }
-
-    // Load user's groups
-    const { data: memberships } = await supabase
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', id)
-
-    if (memberships && memberships.length > 0) {
-      const groupIds = memberships.map(m => m.group_id)
-      const { data: groups } = await supabase
-        .from('groups')
-        .select('*')
-        .in('id', groupIds)
-
-      if (groups) setUserGroups(groups as Group[])
     }
 
     // Check if blocked
@@ -495,14 +478,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
               {profile.favorite_music && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Music</p><p className="text-[13px]">{profile.favorite_music}</p></div>}
               {profile.favorite_movies && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Movies</p><p className="text-[13px]">{profile.favorite_movies}</p></div>}
               {profile.favorite_quotes && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Quotes</p><p className="text-[13px] italic">&ldquo;{profile.favorite_quotes}&rdquo;</p></div>}
-            </div>
-          )}
-
-          {/* Groups */}
-          {userGroups.length > 0 && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Groups</p>
-              <div className="space-y-1">{userGroups.map(g => <Link key={g.id} href={`/groups/${g.id}`} className="press block text-[13px] text-accent hover:underline">{g.name}</Link>)}</div>
             </div>
           )}
 

@@ -9,7 +9,7 @@ import WallPostForm from '@/components/WallPostForm'
 import WallPostItem from '@/components/WallPost'
 import AvatarCropper from '@/components/AvatarCropper'
 import InviteLinkCard from '@/components/InviteLinkCard'
-import type { Profile, WallPost, Group } from '@/types'
+import type { Profile, WallPost } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function ProfilePage() {
@@ -18,7 +18,6 @@ export default function ProfilePage() {
   const [userId, setUserId] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [wallPosts, setWallPosts] = useState<WallPost[]>([])
-  const [userGroups, setUserGroups] = useState<Group[]>([])
   const [editing, setEditing] = useState<string | null>(null)
   const [musicInput, setMusicInput] = useState('')
   const [movieInput, setMovieInput] = useState('')
@@ -55,12 +54,6 @@ export default function ProfilePage() {
       ).filter(p => !!p)
       const unique = Array.from(new Map(others.map(p => [p.id, p])).values())
       setFriends(unique)
-    }
-
-    const { data: memberships } = await supabase.from('group_members').select('group_id').eq('user_id', user.id)
-    if (memberships && memberships.length > 0) {
-      const { data: groups } = await supabase.from('groups').select('*').in('id', memberships.map(m => m.group_id))
-      if (groups) setUserGroups(groups as Group[])
     }
 
     // Load profile viewers
@@ -566,16 +559,6 @@ export default function ProfilePage() {
               </div>
             ) : (
               <Link href="/directory" className="text-[13px] text-accent press">Find people</Link>
-            )}
-          </div>
-
-          {/* Groups */}
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Groups</p>
-            {userGroups.length > 0 ? (
-              <div className="space-y-1">{userGroups.map(g => <Link key={g.id} href={`/groups/${g.id}`} className="press block text-[13px] text-accent hover:underline">{g.name}</Link>)}</div>
-            ) : (
-              <Link href="/groups" className="text-[13px] text-accent press">Browse groups</Link>
             )}
           </div>
 

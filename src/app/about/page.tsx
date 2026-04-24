@@ -12,7 +12,7 @@ export default function AboutPage() {
       <section className="mb-10">
         <h2 className="text-[20px] font-bold mb-3">What is Rabona?</h2>
         <p className="text-[15px] text-text-muted leading-relaxed">
-          Rabona is a social network — think early Facebook. Write short updates and posts for your friends to read and like, connect with people, join and make groups, and message your contacts. Anyone on the internet can sign up.
+          Rabona is a social network — think early Facebook. Write short updates and posts for your friends to read and like, connect with people, and message your contacts. Anyone on the internet can sign up.
         </p>
       </section>
 
@@ -47,15 +47,7 @@ export default function AboutPage() {
             <Camera size={20} className="text-accent flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-[15px] font-semibold mb-1">Photos & Videos</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Upload photos and videos to your wall posts and group posts. Images up to 5 MB and videos up to 20 MB.</p>
-            </div>
-          </div>
-
-          <div className="bg-bg-card border border-border rounded-2xl p-4 flex gap-4">
-            <Users size={20} className="text-accent flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-[15px] font-semibold mb-1">Groups</h3>
-              <p className="text-[13px] text-text-muted leading-relaxed">Join or create groups for anything. Groups have their own walls where members can post and discuss.</p>
+              <p className="text-[13px] text-text-muted leading-relaxed">Upload photos and videos to your wall posts. Images up to 5 MB and videos up to 20 MB.</p>
             </div>
           </div>
 
@@ -119,10 +111,6 @@ export default function AboutPage() {
           <li className="flex gap-3">
             <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">4</span>
             <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Add friends</span> — send friend requests and start writing on each other&apos;s walls.</p>
-          </li>
-          <li className="flex gap-3">
-            <span className="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0">5</span>
-            <p className="text-[14px] text-text-muted leading-relaxed"><span className="text-text font-medium">Join groups</span> — find groups or create your own.</p>
           </li>
         </ol>
       </section>

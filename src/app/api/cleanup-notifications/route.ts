@@ -24,11 +24,6 @@ export async function POST(req: NextRequest) {
     if (!post || (post.author_id !== user.id && post.wall_owner_id !== user.id)) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
-  } else if (post_id && post_type === 'group_post') {
-    const { data: post } = await supabase.from('group_posts').select('author_id').eq('id', post_id).single()
-    if (!post || post.author_id !== user.id) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
   } else if (comment_id) {
     const { data: comment } = await supabase.from('comments').select('author_id').eq('id', comment_id).single()
     if (!comment || comment.author_id !== user.id) {
