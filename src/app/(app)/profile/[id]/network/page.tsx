@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import type { Profile } from '@/types'
-import { HIDDEN_EMAILS } from '@/lib/constants'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 interface Node {
   id: string
@@ -39,20 +39,20 @@ export default function NetworkPage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     async function load() {
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', id).single()
-      if (profileData) setProfile(profileData as Profile)
+      const { data: profileData } = await supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('id', id).single<Profile>()
+      if (profileData) setProfile(profileData)
 
       // Load friends (accepted friendships in either direction)
       const { data: friendData } = await supabase
         .from('friendships')
-        .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
+        .select(`requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(${PROFILE_PUBLIC_COLUMNS}), addressee:profiles!friendships_addressee_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
         .eq('status', 'accepted')
         .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
 
       if (friendData) {
         setFriends(friendData.map(f =>
           (f.requester_id === id ? f.addressee : f.requester) as unknown as Profile
-        ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
+        ).filter(p => !p.hidden_from_directory))
       }
       setLoading(false)
     }
@@ -328,7 +328,7 @@ export default function NetworkPage({ params }: { params: Promise<{ id: string }
 
   if (!profile) {
     return (
-      <div className="max-w-lg mx-auto px-4 pt-12 text-center">
+      <div className="max-w-xl mx-auto px-4 pt-6 text-center">
         <p className="text-text-muted">User not found.</p>
       </div>
     )

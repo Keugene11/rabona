@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Trash2, Pencil, Check, X } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import type { WallPost } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
+import MentionText from '@/components/MentionText'
 
 const TRUNCATE_LENGTH = 280
 
@@ -18,20 +20,30 @@ interface WallPostItemProps {
   onDelete: (postId: string) => void
   isFriend?: boolean
   truncate?: boolean
+  linkToDetail?: boolean
 }
 
-export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelete, isFriend = false, truncate = false }: WallPostItemProps) {
+export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelete, truncate = false, linkToDetail = true }: WallPostItemProps) {
   const supabase = createClient()
+  const router = useRouter()
   const canDelete = currentUserId === post.author_id || currentUserId === wallOwnerId
   const canEdit = currentUserId === post.author_id
-  const canComment = isFriend || currentUserId === wallOwnerId || currentUserId === post.author_id
-  const [editing, setEditing] = useState(false)
-  const [editContent, setEditContent] = useState(post.content)
-  const [content, setContent] = useState(post.content)
-  const [expanded, setExpanded] = useState(false)
+  const canComment = !!currentUserId
+  const content = post.content
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const shouldTruncate = truncate && !expanded && content.length > TRUNCATE_LENGTH
+  const [showMenu, setShowMenu] = useState(false)
+  const shouldTruncate = truncate && content.length > TRUNCATE_LENGTH
+  const displayContent = shouldTruncate ? content.slice(0, TRUNCATE_LENGTH).trimEnd() + '…' : content
+
+  function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!linkToDetail) return
+    const target = e.target as HTMLElement
+    if (target.closest('a, button, input, textarea, video, label, [role="button"]')) return
+    const sel = typeof window !== 'undefined' ? window.getSelection() : null
+    if (sel && sel.toString().length > 0) return
+    router.push(`/post/${post.id}`)
+  }
 
   async function handleDelete() {
     // Nullify notification references via server route (uses service role for cross-user updates)
@@ -44,19 +56,15 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
     onDelete(post.id)
   }
 
-  async function handleSave() {
-    if (!editContent.trim()) return
-    await supabase.from('wall_posts').update({ content: editContent.trim() }).eq('id', post.id)
-    setContent(editContent.trim())
-    setEditing(false)
-  }
-
   function isVideo(url: string) {
     return /\.(mp4|webm|mov|avi)$/i.test(url)
   }
 
   return (
-    <div className="bg-bg-card border border-border rounded-2xl p-4">
+    <div
+      onClick={handleCardClick}
+      className={`bg-bg-card border border-border rounded-2xl p-4 transition-colors${linkToDetail ? ' cursor-pointer active:bg-bg-card-hover' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <Link href={`/profile/${post.author_id}`} className="press">
@@ -80,15 +88,39 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
         <div className="flex items-center gap-2">
           <Likes postType="wall_post" postId={post.id} userId={currentUserId} authorId={post.author_id} />
           <Impressions postType="wall_post" postId={post.id} userId={currentUserId} />
-          {canEdit && !editing && (
-            <button onClick={() => { setEditContent(content); setEditing(true) }} className="press text-text-muted hover:text-text p-1">
-              <Pencil size={13} />
-            </button>
-          )}
-          {canDelete && !showDeleteConfirm && (
-            <button onClick={() => setShowDeleteConfirm(true)} className="press text-text-muted hover:text-red-500 p-1">
-              <Trash2 size={14} />
-            </button>
+          {(canEdit || canDelete) && !showDeleteConfirm && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="press text-text-muted hover:text-text p-1"
+                aria-label="More"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute top-full right-0 mt-1 z-20 bg-bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[120px]">
+                    {canEdit && (
+                      <button
+                        onClick={() => { setShowMenu(false); router.push(`/post/${post.id}/edit`) }}
+                        className="press block w-full text-left px-4 py-2.5 text-[13px] hover:bg-bg-input"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => { setShowMenu(false); setShowDeleteConfirm(true) }}
+                        className="press block w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-bg-input"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
           {showDeleteConfirm && (
             <div className="flex items-center gap-1.5">
@@ -98,45 +130,20 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
           )}
         </div>
       </div>
-      {editing ? (
+      {content && (
+        <p className="text-[14px] mt-2.5 whitespace-pre-wrap">
+          <MentionText text={displayContent} />
+          {shouldTruncate && <span className="text-accent font-medium ml-1">more</span>}
+        </p>
+      )}
+      {post.media_url && (
         <div className="mt-2.5">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            maxLength={2000}
-            className="w-full bg-bg-input rounded-lg px-3 py-2 text-[14px] outline-none resize-none border border-border"
-            rows={3}
-            autoFocus
-          />
-          <div className="flex gap-2 mt-1.5">
-            <button onClick={handleSave} className="press flex items-center gap-1 text-[12px] font-medium text-accent">
-              <Check size={13} /> Save
-            </button>
-            <button onClick={() => setEditing(false)} className="press flex items-center gap-1 text-[12px] text-text-muted">
-              <X size={13} /> Cancel
-            </button>
-          </div>
+          {isVideo(post.media_url) ? (
+            <video src={post.media_url} className="max-w-full rounded-xl" controls />
+          ) : (
+            <img src={post.media_url} alt="" className="max-w-full rounded-xl" />
+          )}
         </div>
-      ) : (
-        <>
-          {content && (
-            <p className="text-[14px] mt-2.5 whitespace-pre-wrap">
-              {shouldTruncate ? content.slice(0, TRUNCATE_LENGTH).trimEnd() + '...' : content}
-              {shouldTruncate && (
-                <button onClick={() => setExpanded(true)} className="press text-accent font-medium ml-1">more</button>
-              )}
-            </p>
-          )}
-          {post.media_url && (
-            <div className="mt-2.5">
-              {isVideo(post.media_url) ? (
-                <video src={post.media_url} className="max-w-full rounded-xl" controls />
-              ) : (
-                <img src={post.media_url} alt="" className="max-w-full rounded-xl" />
-              )}
-            </div>
-          )}
-        </>
       )}
       <Comments postType="wall_post" postId={post.id} postAuthorId={post.author_id} canComment={canComment} />
     </div>

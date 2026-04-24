@@ -18,7 +18,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">2. How We Use Your Information</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          We use your information to provide and improve Rabona, including displaying your profile to other students, enabling social features like friends, messaging, and groups, and sending you notifications about activity on your account.
+          We use your information to provide and improve Rabona, including displaying your profile to other users, enabling social features like friends, messaging, and groups, and sending you notifications about activity on your account.
         </p>
       </section>
 
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">7. Eligibility</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          Rabona is available to anyone 13 years of age or older.
+          Rabona is open to anyone. You must be at least 13 years old to create an account.
         </p>
       </section>
 

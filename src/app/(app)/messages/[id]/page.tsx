@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, ArrowLeft, Send, Heart, Check, CheckCheck } from 'lucide-react'
+import { Loader2, ArrowLeft, Send, Heart, Image as ImageIcon, X } from 'lucide-react'
 import Link from 'next/link'
 import type { Message, Profile } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: conversationId } = use(params)
@@ -15,13 +16,34 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [amUser1, setAmUser1] = useState(false)
   const [otherReadAt, setOtherReadAt] = useState<string | null>(null)
   const [likedMessages, setLikedMessages] = useState<Set<string>>(new Set())
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const initialScrollDone = useRef(false)
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5 MB.')
+      return
+    }
+    setMediaFile(file)
+    setMediaPreview(URL.createObjectURL(file))
+  }
+
+  function clearMedia() {
+    setMediaFile(null)
+    setMediaPreview(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
   function scrollToBottom(instant: boolean) {
     const el = scrollRef.current
@@ -90,7 +112,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
     const { data: conv } = await supabase
       .from('conversations')
-      .select('*, user1:profiles!conversations_user1_id_fkey(*), user2:profiles!conversations_user2_id_fkey(*)')
+      .select(`*, user1:profiles!conversations_user1_id_fkey(${PROFILE_PUBLIC_COLUMNS}), user2:profiles!conversations_user2_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('id', conversationId)
       .single()
 
@@ -98,6 +120,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       // Verify current user is a participant
       if (conv.user1_id !== user.id && conv.user2_id !== user.id) return
       const isUser1 = conv.user1_id === user.id
+      setAmUser1(isUser1)
       setOtherUser((isUser1 ? conv.user2 : conv.user1) as Profile)
       setOtherReadAt(isUser1 ? conv.user2_read_at : conv.user1_read_at)
 
@@ -136,22 +159,43 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     }
 
     setLoading(false)
-    // Focus input after load
-    setTimeout(() => inputRef.current?.focus(), 100)
   }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!content.trim() || sending) return
+    if ((!content.trim() && !mediaFile) || sending) return
 
     setSending(true)
     const text = content.trim()
+    const fileToUpload = mediaFile
     setContent('')
+    clearMedia()
+
+    let media_url: string | null = null
+    if (fileToUpload) {
+      const ext = (fileToUpload.name.split('.').pop() || '').toLowerCase()
+      const allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+      if (!allowed.includes(ext)) {
+        alert('Unsupported image type.')
+        setSending(false)
+        return
+      }
+      const path = `${currentUserId}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('posts').upload(path, fileToUpload)
+      if (upErr) {
+        alert('Failed to upload image.')
+        setSending(false)
+        return
+      }
+      const { data: { publicUrl } } = supabase.storage.from('posts').getPublicUrl(path)
+      media_url = publicUrl
+    }
 
     const { data, error } = await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: currentUserId,
       content: text,
+      media_url,
     }).select().single()
 
     if (!error && data) {
@@ -161,16 +205,21 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       })
     }
 
-    // last_message_* columns on conversations are populated by a DB trigger
-    // on messages INSERT. The sender's read timestamp is also set by the trigger.
+    const preview = text || (media_url ? '📷 Photo' : '')
+    const now = new Date().toISOString()
+    await supabase.from('conversations').update({
+      last_message_at: now,
+      last_message_content: preview,
+      last_message_sender_id: currentUserId,
+      ...(amUser1 ? { user1_read_at: now } : { user2_read_at: now }),
+    }).eq('id', conversationId)
 
-    // Create inbox notification with message content
     if (otherUser) {
       await supabase.from('notifications').insert({
         user_id: otherUser.id,
         actor_id: currentUserId,
         type: 'message',
-        content: text,
+        content: preview,
       })
     }
 
@@ -210,10 +259,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   }
 
   return (
-    <div className="flex flex-col bg-bg" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '56px', zIndex: 20 }}>
+    <div className="chat-container bg-bg">
       <div className="max-w-2xl mx-auto w-full flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="bg-bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <div className="px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <Link href="/messages" className="press">
             <ArrowLeft size={20} />
           </Link>
@@ -252,25 +301,35 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                 <div
                   className={`relative max-w-[75%] rounded-2xl px-3.5 py-2 text-[14px] ${
                     isMine
-                      ? 'bg-accent text-white rounded-br-sm'
+                      ? 'bg-bg-input rounded-br-sm'
                       : 'bg-bg-card border border-border rounded-bl-sm'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  {msg.media_url && (
+                    <img
+                      src={msg.media_url}
+                      alt=""
+                      className="rounded-xl max-w-full max-h-80 mb-1 block"
+                    />
+                  )}
+                  {msg.content && (
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  )}
                   <div className={`flex items-center gap-1.5 mt-0.5 ${isMine ? 'justify-end' : ''}`}>
-                    <span className={`text-[10px] ${isMine ? 'text-white/60' : 'text-text-muted'}`}>
+                    <span className="text-[10px] text-text-muted">
                       {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </span>
                     {status && (
-                      status === 'delivered'
-                        ? <CheckCheck size={12} className="text-white/60" />
-                        : <Check size={12} className="text-white/60" />
+                      <span className="text-[10px] text-text-muted">
+                        {status === 'delivered' ? 'Seen' : 'Sent'}
+                      </span>
                     )}
                     <button
                       onClick={() => toggleLikeMessage(msg.id)}
-                      className="press"
+                      className="press p-0.5"
+                      aria-label="Like message"
                     >
-                      <Heart size={10} className={iLiked ? 'fill-red-500 text-red-500' : isMine ? 'text-white/30 hover:text-white/60' : 'text-text-muted/30 hover:text-text-muted'} />
+                      <Heart size={13} className={iLiked ? 'fill-red-500 text-red-500' : 'text-text-muted hover:text-text'} />
                     </button>
                   </div>
                   {/* Like count bubble */}
@@ -288,23 +347,52 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSend} className="border-t border-border px-4 py-3 flex gap-2 flex-shrink-0 bg-bg">
-          <input
-            ref={inputRef}
-            type="text"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-bg-input rounded-full px-4 py-2 text-[14px] outline-none border-none placeholder:text-text-muted/50"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={!content.trim() || sending}
-            className="bg-accent text-white rounded-full p-2.5 press disabled:opacity-50 flex-shrink-0"
-          >
-            {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-          </button>
+        <form onSubmit={handleSend} className="border-t border-border px-4 py-3 flex flex-col gap-2 flex-shrink-0 bg-bg">
+          {mediaPreview && (
+            <div className="relative inline-block self-start">
+              <img src={mediaPreview} alt="" className="max-h-32 rounded-xl" />
+              <button
+                type="button"
+                onClick={clearMedia}
+                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 press"
+                aria-label="Remove image"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 items-center">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="press text-text-muted hover:text-text p-1 flex-shrink-0"
+              aria-label="Attach image"
+            >
+              <ImageIcon size={20} />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-bg-input rounded-full px-4 py-2 text-[14px] outline-none border-none placeholder:text-text-muted/50"
+            />
+            <button
+              type="submit"
+              disabled={(!content.trim() && !mediaFile) || sending}
+              className="bg-text text-bg rounded-full p-2.5 press disabled:opacity-50 flex-shrink-0"
+            >
+              {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </div>
         </form>
       </div>
     </div>

@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
+      // Signup gating is enforced by the handle_new_user DB trigger.
       if (user) {
         await supabase.from('profiles').update({
           onboarding_complete: true,

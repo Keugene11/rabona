@@ -15,24 +15,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'targetUserId required' }, { status: 400 })
   }
 
-  // Check if target user restricts messages to friends only (DB RLS also enforces
-  // this on messages INSERT; this check returns a friendly error at conversation
-  // creation time instead of a silent failure on first send).
-  const { data: theirProfile } = await supabase
+  // Verify same university and check messages_from setting
+  const { data: profiles } = await supabase
     .from('profiles')
-    .select('messages_from')
-    .eq('id', targetUserId)
-    .maybeSingle()
+    .select('id, university, messages_from')
+    .in('id', [user.id, targetUserId])
 
-  if (theirProfile?.messages_from === 'friends') {
-    const { data: friendData } = await supabase
-      .from('friendships')
-      .select('id')
-      .eq('status', 'accepted')
-      .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`)
-      .limit(1)
-    if (!friendData || friendData.length === 0) {
-      return NextResponse.json({ error: 'This user only accepts messages from friends' }, { status: 403 })
+  if (profiles && profiles.length === 2) {
+    const myProfile = profiles.find(p => p.id === user.id)
+    const theirProfile = profiles.find(p => p.id === targetUserId)
+    if (myProfile?.university && theirProfile?.university && myProfile.university !== theirProfile.university) {
+      return NextResponse.json({ error: 'Cannot message users from other universities' }, { status: 403 })
+    }
+    // Check if target user restricts messages to friends only
+    if (theirProfile?.messages_from === 'friends') {
+      const { data: friendData } = await supabase
+        .from('friendships')
+        .select('id')
+        .eq('status', 'accepted')
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`)
+        .limit(1)
+      if (!friendData || friendData.length === 0) {
+        return NextResponse.json({ error: 'This user only accepts messages from friends' }, { status: 403 })
+      }
     }
   }
 

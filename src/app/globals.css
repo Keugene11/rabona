@@ -18,14 +18,14 @@
 }
 
 .dark {
-  --color-bg: #0f0e0d;
-  --color-bg-card: #1a1917;
-  --color-bg-card-hover: #232220;
-  --color-bg-input: #262523;
+  --color-bg: #1a1816;
+  --color-bg-card: #25231f;
+  --color-bg-card-hover: #2e2c29;
+  --color-bg-input: #302e2b;
   --color-text: #e8e5e1;
-  --color-text-muted: #7a7672;
-  --color-border: #302e2b;
-  --color-nav: #0f0e0d;
+  --color-text-muted: #8a857f;
+  --color-border: #3a3835;
+  --color-nav: #1a1816;
 }
 
 body {
@@ -48,6 +48,12 @@ body {
   to { opacity: 1; }
 }
 .animate-fade-in { animation: fade-in 0.35s ease-out both; }
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-page-in { animation: page-in 0.22s ease-out both; }
 
 .stagger > * { animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
@@ -90,4 +96,22 @@ select optgroup {
   background: var(--color-accent);
   border-radius: 2px;
   margin-top: 4px;
+}
+
+/* Chat page: full-viewport flex column that escapes (app)/layout.tsx padding.
+   Height reserves room for the mobile bottom navbar; negative margins cancel
+   the parent's safe-area + navbar padding so the chat fills the screen. */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 56px - env(safe-area-inset-bottom));
+  margin-top: calc(-1 * env(safe-area-inset-top));
+  margin-bottom: calc(-6rem - env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .chat-container {
+    height: 100dvh;
+    margin-top: 0;
+    margin-bottom: -1.5rem;
+  }
 }

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Hand, UserPlus, UserCheck, UserX, Heart, MessageSquare, MessageCircle, Users, Check } from 'lucide-react'
+import { Loader2, Hand, UserPlus, UserCheck, UserX, Heart, MessageSquare, MessageCircle, Users, Check, AtSign } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 interface Notification {
   id: string
@@ -24,6 +25,7 @@ interface Notification {
   wall_owner_id?: string
   conversation_id?: string
   group_id?: string
+  group_name?: string
 }
 
 export default function NotificationsPage() {
@@ -48,7 +50,7 @@ export default function NotificationsPage() {
     // Load ALL notifications — this is the single source of truth for the inbox
     const { data: notifData } = await supabase
       .from('notifications')
-      .select('*, actor:profiles!notifications_actor_id_fkey(*), comment:comments(content)')
+      .select(`*, actor:profiles!notifications_actor_id_fkey(${PROFILE_PUBLIC_COLUMNS}), comment:comments(content)`)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100)
@@ -87,26 +89,52 @@ export default function NotificationsPage() {
         })
       }
 
-      // Fetch post content for like notifications so we can show what was liked
-      const likeNotifs = notifs.filter(n => (n.type === 'like' || n.type === 'friend_like') && n.post_id)
-      const likeWallIds = [...new Set(likeNotifs.filter(n => n.post_type === 'wall_post').map(n => n.post_id!))]
-      const likeGroupIds = [...new Set(likeNotifs.filter(n => n.post_type === 'group_post').map(n => n.post_id!))]
+      // Fetch group names for group_join notifications
+      const groupJoinIds = [...new Set(notifs.filter(n => n.type === 'group_join' && n.post_type === 'group' && n.post_id).map(n => n.post_id!))]
+      if (groupJoinIds.length > 0) {
+        const { data: groups } = await supabase
+          .from('groups')
+          .select('id, name')
+          .in('id', groupJoinIds)
+        const nameMap: Record<string, string> = {}
+        groups?.forEach(g => { nameMap[g.id] = g.name })
+        notifs.forEach(n => {
+          if (n.type === 'group_join' && n.post_id && nameMap[n.post_id]) {
+            n.group_name = nameMap[n.post_id]
+            n.group_id = n.post_id
+          }
+        })
+      }
+
+      // Fetch original post content for like/comment/friend_post notifications so the user sees which post
+      const postRefNotifs = notifs.filter(n =>
+        (n.type === 'like' || n.type === 'friend_like' || n.type === 'comment' || n.type === 'friend_comment' || n.type === 'friend_post') && n.post_id
+      )
+      const refWallIds = [...new Set(postRefNotifs.filter(n => n.post_type === 'wall_post').map(n => n.post_id!))]
+      const refGroupIds = [...new Set(postRefNotifs.filter(n => n.post_type === 'group_post').map(n => n.post_id!))]
       const postContentMap: Record<string, string> = {}
-      if (likeWallIds.length > 0) {
+      const mediaFallback = (url: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) ? '[video]' : '[photo]'
+      if (refWallIds.length > 0) {
         const { data: wallPosts } = await supabase
           .from('wall_posts')
-          .select('id, content')
-          .in('id', likeWallIds)
-        wallPosts?.forEach(wp => { if (wp.content) postContentMap[wp.id] = wp.content })
+          .select('id, content, media_url')
+          .in('id', refWallIds)
+        wallPosts?.forEach(wp => {
+          if (wp.content) postContentMap[wp.id] = wp.content
+          else if (wp.media_url) postContentMap[wp.id] = mediaFallback(wp.media_url)
+        })
       }
-      if (likeGroupIds.length > 0) {
+      if (refGroupIds.length > 0) {
         const { data: groupPosts } = await supabase
           .from('group_posts')
-          .select('id, content')
-          .in('id', likeGroupIds)
-        groupPosts?.forEach(gp => { if (gp.content) postContentMap[gp.id] = gp.content })
+          .select('id, content, media_url')
+          .in('id', refGroupIds)
+        groupPosts?.forEach(gp => {
+          if (gp.content) postContentMap[gp.id] = gp.content
+          else if (gp.media_url) postContentMap[gp.id] = mediaFallback(gp.media_url)
+        })
       }
-      likeNotifs.forEach(n => {
+      postRefNotifs.forEach(n => {
         if (n.post_id && postContentMap[n.post_id]) {
           n.post_content = postContentMap[n.post_id]
         }
@@ -234,6 +262,9 @@ export default function NotificationsPage() {
     if (type === 'friend_post') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'like_comment') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'friend_like_comment') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'mention') return <AtSign size={12} className="text-accent flex-shrink-0" />
     return null
   }
 
@@ -250,11 +281,14 @@ export default function NotificationsPage() {
     if (type === 'friend_post') return 'made a post'
     if (type === 'friend_comment') return 'commented on a post'
     if (type === 'friend_like') return 'liked a post'
+    if (type === 'like_comment') return 'liked your comment'
+    if (type === 'friend_like_comment') return 'liked a comment'
+    if (type === 'mention') return 'mentioned you'
     return ''
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-28 ">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Inbox</h1>
         <div className="accent-bar" />
@@ -270,6 +304,8 @@ export default function NotificationsPage() {
             const postLink = n.post_type === 'wall_post' && n.wall_owner_id
               ? `/profile/${n.wall_owner_id}`
               : n.post_type === 'group_post' && n.group_id
+              ? `/groups/${n.group_id}`
+              : n.type === 'group_join' && n.group_id
               ? `/groups/${n.group_id}`
               : null
             const showFriendActions = n.type === 'friend_request' && !handledRequests.has(n.actor_id)
@@ -304,7 +340,7 @@ export default function NotificationsPage() {
                       )}
                     </span>
                   </div>
-                  {n.comment?.content && (n.type === 'comment' || n.type === 'reply') && (
+                  {n.comment?.content && (n.type === 'comment' || n.type === 'reply' || n.type === 'friend_comment' || n.type === 'like_comment' || n.type === 'friend_like_comment') && (
                     <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-2">
                       &ldquo;{n.comment.content}&rdquo;
                     </p>
@@ -314,9 +350,19 @@ export default function NotificationsPage() {
                       &ldquo;{n.post_content}&rdquo;
                     </p>
                   )}
-                  {n.content && (n.type === 'friend_post' || n.type === 'friend_comment') && (
+                  {n.post_content && (n.type === 'comment' || n.type === 'friend_comment') && (
+                    <p className="text-[12px] text-text-muted mt-0.5 pl-[18px] line-clamp-2">
+                      on &ldquo;{n.post_content}&rdquo;
+                    </p>
+                  )}
+                  {n.type === 'friend_post' && (n.post_content || n.content) && (
                     <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-2">
-                      &ldquo;{n.content}&rdquo;
+                      &ldquo;{n.post_content || n.content}&rdquo;
+                    </p>
+                  )}
+                  {n.type === 'group_join' && n.group_name && (
+                    <p className="text-[12px] text-text-muted mt-1 pl-[18px] line-clamp-1">
+                      {n.group_name}
                     </p>
                   )}
                   {n.type === 'message' && n.content && (

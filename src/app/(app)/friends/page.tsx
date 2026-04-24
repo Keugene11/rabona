@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, UserCheck, UserX } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
-import { HIDDEN_EMAILS } from '@/lib/constants'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function FriendsPage() {
   const supabase = createClient()
@@ -28,7 +28,7 @@ export default function FriendsPage() {
     // Load accepted friends (either direction)
     const { data: friendData } = await supabase
       .from('friendships')
-      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
+      .select(`requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(${PROFILE_PUBLIC_COLUMNS}), addressee:profiles!friendships_addressee_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('status', 'accepted')
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
       .order('updated_at', { ascending: false })
@@ -36,13 +36,13 @@ export default function FriendsPage() {
     if (friendData) {
       setFriends(friendData.map(f =>
         (f.requester_id === user.id ? f.addressee : f.requester) as unknown as Profile
-      ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
+      ).filter(p => !p.hidden_from_directory))
     }
 
     // Load pending friend requests (sent to me)
     const { data: requestData } = await supabase
       .from('friendships')
-      .select('id, requester:profiles!friendships_requester_id_fkey(*)')
+      .select(`id, requester:profiles!friendships_requester_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('addressee_id', user.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
@@ -51,7 +51,7 @@ export default function FriendsPage() {
       setRequests(requestData.map(r => ({
         id: r.id,
         profile: r.requester as unknown as Profile,
-      })).filter(r => !HIDDEN_EMAILS.includes(r.profile.email || '')))
+      })).filter(r => !r.profile.hidden_from_directory))
     }
 
     setLoading(false)
@@ -111,7 +111,7 @@ export default function FriendsPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-12 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 ">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Friends</h1>
         <div className="accent-bar" />

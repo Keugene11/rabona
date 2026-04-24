@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, LogOut, Camera, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Briefcase, ArrowLeft, Share2 } from 'lucide-react'
+import { Loader2, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
+import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import WallPostForm from '@/components/WallPostForm'
 import WallPostItem from '@/components/WallPost'
 import AvatarCropper from '@/components/AvatarCropper'
 import type { Profile, WallPost, Group } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function ProfilePage() {
   const supabase = createClient()
@@ -20,6 +22,10 @@ export default function ProfilePage() {
   const [wallPosts, setWallPosts] = useState<WallPost[]>([])
   const [userGroups, setUserGroups] = useState<Group[]>([])
   const [editing, setEditing] = useState<string | null>(null)
+  const [courseFilter, setCourseFilter] = useState('')
+  const [courseOpen, setCourseOpen] = useState(false)
+  const [clubFilter, setClubFilter] = useState('')
+  const [clubOpen, setClubOpen] = useState(false)
   const [musicInput, setMusicInput] = useState('')
   const [movieInput, setMovieInput] = useState('')
   const [friends, setFriends] = useState<Profile[]>([])
@@ -28,6 +34,7 @@ export default function ProfilePage() {
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [uniData, setUniData] = useState<UniversityData | null>(null)
 
   useEffect(() => { loadProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -35,22 +42,28 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    const { data } = await supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('id', user.id).single<Profile>()
     if (data) {
-      setProfile(data as Profile)
+      const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: user.id })
+      const contactRow = Array.isArray(contact) ? contact[0] : contact
+      setProfile({ ...data, email: contactRow?.email ?? user.email ?? '', phone: contactRow?.phone ?? '' })
+      const ud = await getUniversityData(data.university || 'stonybrook')
+      setUniData(ud)
     }
-    const { data: posts } = await supabase.from('wall_posts').select('*, author:profiles!wall_posts_author_id_fkey(*)').eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)
+    const { data: posts } = await supabase.from('wall_posts').select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)
     if (posts) setWallPosts(posts as WallPost[])
     // Load friends (accepted friendships in either direction)
     const { data: friendData } = await supabase
       .from('friendships')
-      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
+      .select(`requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(${PROFILE_PUBLIC_COLUMNS}), addressee:profiles!friendships_addressee_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('status', 'accepted')
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
     if (friendData) {
-      setFriends(friendData.map(f =>
+      const others = friendData.map(f =>
         (f.requester_id === user.id ? f.addressee : f.requester) as unknown as Profile
-      ))
+      ).filter(p => !!p)
+      const unique = Array.from(new Map(others.map(p => [p.id, p])).values())
+      setFriends(unique)
     }
 
     const { data: memberships } = await supabase.from('group_members').select('group_id').eq('user_id', user.id)
@@ -62,7 +75,7 @@ export default function ProfilePage() {
     // Load profile viewers
     const { data: views } = await supabase
       .from('profile_views')
-      .select('*, viewer:profiles!profile_views_viewer_id_fkey(*)')
+      .select(`*, viewer:profiles!profile_views_viewer_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('profile_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -72,11 +85,11 @@ export default function ProfilePage() {
   }
 
   const SAFE_FIELDS = new Set([
-    'full_name', 'about_me', 'university', 'major', 'second_major', 'minor', 'job',
+    'full_name', 'about_me', 'major', 'second_major', 'minor', 'residence_hall',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
-    'favorite_quotes',
+    'favorite_quotes', 'courses', 'clubs', 'fraternity_sorority',
   ])
 
   const updateField = useCallback((field: string, value: string | number | null) => {
@@ -118,15 +131,39 @@ export default function ProfilePage() {
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
   if (!profile) return null
 
+  const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
+  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
   const musicTags = profile.favorite_music ? profile.favorite_music.split(', ').filter(Boolean) : []
   const movieTags = profile.favorite_movies ? profile.favorite_movies.split(', ').filter(Boolean) : []
   const empty = 'text-text-muted/40 italic cursor-pointer'
   const inputClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none w-full border border-border focus:border-text-muted'
   const selectClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none border border-border focus:border-text-muted cursor-pointer'
 
+  // Hall groups for select
+  const resHalls = uniData?.RESIDENCE_HALLS || []
+  const hallGroups: Record<string, typeof resHalls> = {}
+  for (const h of resHalls) { const g = h.group || 'Other'; if (!hallGroups[g]) hallGroups[g] = []; hallGroups[g].push(h) }
+
+  // Course helpers
+  const sortedDepts = uniData ? Object.entries(uniData.COURSES).sort((a, b) => a[0].localeCompare(b[0])) : []
+  const filteredDepts = sortedDepts.map(([code, dept]) => ({
+    code, name: dept.name,
+    courses: dept.courses.map(n => `${code} ${n}`).filter(c => !courses.includes(c)).filter(c => {
+      if (!courseFilter) return true
+      const q = courseFilter.trim().toUpperCase()
+      if (/^[A-Z]{2,4}$/.test(q)) return code === q
+      if (/^[A-Z]{2,4}\s/.test(q)) return c.toUpperCase().startsWith(q)
+      return dept.name.toLowerCase().includes(courseFilter.toLowerCase())
+    })
+  })).filter(d => d.courses.length > 0)
+
+  // Club helpers
+  const allClubs = (uniData?.CLUBS || []).filter(c => !clubs.includes(c))
+  const filteredClubs = allClubs.filter(c => !clubFilter || c.toLowerCase().includes(clubFilter.toLowerCase()))
+
   // Editable row: click to open edit sheet
   function EditableRow({ icon: Icon, label, field, value, type = 'text', options }: {
-    icon: typeof Briefcase; label: string; field: string; value?: string | null; type?: string
+    icon: typeof MapPin; label: string; field: string; value?: string | null; type?: string
     options?: { value: string; label: string; group?: string }[]
   }) {
     return (
@@ -150,11 +187,10 @@ export default function ProfilePage() {
     const fieldConfigs: Record<string, { label: string; type: string; options?: { value: string; label: string; group?: string }[] }> = {
       full_name: { label: 'Name', type: 'text' },
       about_me: { label: 'About', type: 'textarea' },
-      university: { label: 'University / School', type: 'text' },
-      major: { label: 'Major', type: 'text' },
-      second_major: { label: 'Second Major', type: 'text' },
-      minor: { label: 'Minor', type: 'text' },
-      job: { label: 'Job', type: 'text' },
+      major: { label: 'Major', type: 'select', options: (uniData?.MAJORS || []).map(m => ({ value: m, label: m })) },
+      second_major: { label: 'Second Major', type: 'select', options: (uniData?.MAJORS || []).map(m => ({ value: m, label: m })) },
+      minor: { label: 'Minor', type: 'select', options: (uniData?.MINORS || []).map(m => ({ value: m, label: m })) },
+      residence_hall: { label: 'Dorm', type: 'select', options: resHalls },
       hometown: { label: 'Hometown', type: 'text' },
       high_school: { label: 'High School', type: 'text' },
       birthday: { label: 'Birthday', type: 'birthday' },
@@ -164,6 +200,9 @@ export default function ProfilePage() {
       interested_in: { label: 'Interested In', type: 'select', options: INTERESTED_IN.map(s => ({ value: s, label: s })) },
       looking_for: { label: 'Looking For', type: 'select', options: LOOKING_FOR.map(s => ({ value: s, label: s })) },
       political_views: { label: 'Political Views', type: 'select', options: POLITICAL_VIEWS.map(p => ({ value: p, label: p })) },
+      fraternity_sorority: { label: 'Fraternity / Sorority', type: 'select', options: (uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g })) },
+      courses: { label: 'Courses', type: 'multiselect', options: sortedDepts.flatMap(([code, dept]) => dept.courses.map(n => ({ value: `${code} ${n}`, label: `${code} ${n}`, group: `${code} — ${dept.name}` }))) },
+      clubs: { label: 'Clubs', type: 'multiselect', options: (uniData?.CLUBS || []).map(c => ({ value: c, label: c })) },
       email: { label: 'Email', type: 'text' },
       phone: { label: 'Phone', type: 'tel' },
       websites: { label: 'Website', type: 'text' },
@@ -219,7 +258,7 @@ export default function ProfilePage() {
     return (
       <div className="fixed inset-0 bg-bg z-[60] flex flex-col animate-slide-up overflow-hidden touch-none" style={{ overscrollBehavior: 'none', height: '100dvh' }}>
         {/* Header */}
-        <div className="max-w-lg mx-auto w-full flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
+        <div className="max-w-xl mx-auto w-full flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
           <button onClick={() => setEditing(null)} className="press text-[14px] text-text-muted">
             <ArrowLeft size={20} />
           </button>
@@ -234,7 +273,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 max-w-lg mx-auto w-full px-4 py-6 ${type === 'select' || type === 'multiselect' ? 'overflow-y-auto touch-auto -webkit-overflow-scrolling-touch' : 'overflow-hidden'}`}>
+        <div className={`flex-1 min-h-0 max-w-xl mx-auto w-full px-4 py-6 ${type === 'select' || type === 'multiselect' ? 'overflow-y-auto touch-auto -webkit-overflow-scrolling-touch' : 'overflow-hidden'}`}>
           {type === 'multiselect' && options ? (
             <div>
               {multiSelected.length > 0 && (
@@ -371,7 +410,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pt-10 pb-28">
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-28">
       {/* Mobile profile header — always visible */}
       <div className="md:hidden mb-4">
         <div className="flex items-center gap-3.5 mb-3">
@@ -392,14 +431,14 @@ export default function ProfilePage() {
           </label>
           <div className="min-w-0 flex-1">
             <h1 className="text-[20px] font-bold tracking-tight truncate">{profile.full_name || 'Set your name'}</h1>
+            {profile.username && <p className="text-[13px] text-text-muted truncate">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted truncate">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.job ? ` · ${profile.job}` : ''}
+              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
-            <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={16} /></button>
           </div>
         </div>
       </div>
@@ -424,16 +463,16 @@ export default function ProfilePage() {
         {/* LEFT — details */}
         <div className={`md:w-[380px] md:flex-shrink-0 md:sticky md:top-4 space-y-3 ${activeTab === 'info' ? 'block' : 'hidden'} md:block`}>
 
-          {/* Name & subtitle */}
-          <div>
+          {/* Name & subtitle — desktop only; mobile uses the compact header above */}
+          <div className="hidden md:block">
             <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
+            {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted mt-0.5">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.job ? ` · ${profile.job}` : ''}
+              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
             </p>
             <div className="flex items-center gap-3 mt-2">
               <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
-              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login'); router.refresh() }} className="press p-2 text-text-muted hover:text-text"><LogOut size={18} /></button>
             </div>
           </div>
 
@@ -483,14 +522,26 @@ export default function ProfilePage() {
             <p className={`text-[13px] cursor-pointer ${profile.about_me ? 'hover:underline' : empty}`}>{profile.about_me || 'Click to add...'}</p>
           </div>
 
-          {/* School & Work */}
+          {/* Academics & Background */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
-            <EditableRow icon={School} label="University" field="university" value={profile.university} />
-            <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} />
-            <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} />
-            <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} />
-            <EditableRow icon={Briefcase} label="Job" field="job" value={profile.job} />
+            <EditableRow icon={GraduationCap} label="Major" field="major" value={profile.major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
+            <EditableRow icon={GraduationCap} label="2nd Major" field="second_major" value={profile.second_major} options={(uniData?.MAJORS || []).map(m => ({ value: m, label: m }))} />
+            <EditableRow icon={BookOpen} label="Minor" field="minor" value={profile.minor} options={(uniData?.MINORS || []).map(m => ({ value: m, label: m }))} />
             <EditableRow icon={GraduationCap} label="Class Year" field="class_year" value={profile.class_year?.toString()} options={CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() }))} />
+            {resHalls.length > 0 && <EditableRow icon={MapPin} label="Dorm" field="residence_hall" value={profile.residence_hall} options={resHalls} />}
+            <EditableRow icon={Users} label="Greek Life" field="fraternity_sorority" value={profile.fraternity_sorority} options={(uniData?.GREEK_LIFE || []).map(g => ({ value: g, label: g }))} />
+          </div>
+
+          {/* Courses */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('courses')}>
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
+            <p className={`text-[13px] cursor-pointer ${courses.length > 0 ? 'hover:underline' : empty}`}>{courses.length > 0 ? courses.join(', ') : 'Click to add...'}</p>
+          </div>
+
+          {/* Clubs */}
+          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('clubs')}>
+            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Clubs</p>
+            <p className={`text-[13px] cursor-pointer ${clubs.length > 0 ? 'hover:underline' : empty}`}>{clubs.length > 0 ? clubs.join(', ') : 'Click to add...'}</p>
           </div>
 
           {/* Personal */}
@@ -586,7 +637,6 @@ export default function ProfilePage() {
 
         {/* RIGHT — Wall */}
         <div className={`flex-1 min-w-0 mt-5 md:mt-0 ${activeTab === 'wall' ? 'block' : 'hidden'} md:block`}>
-          <h2 className="text-[18px] font-bold mb-3">The Wall</h2>
           <WallPostForm wallOwnerId={userId} onPost={(post) => setWallPosts([post, ...wallPosts])} />
           {wallPosts.length === 0 ? (
             <div className="bg-bg-card border border-border rounded-2xl p-6 text-center mt-3">

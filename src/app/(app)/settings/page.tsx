@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Lock, Trash2, Loader2, Mail, Info, Bell, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Lock, Trash2, Loader2, Mail, Info, Bell, Moon, Sun, LogOut } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 
 export default function SettingsPage() {
@@ -14,23 +14,39 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+  const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ''))
+  }, [supabase])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   async function handleDelete() {
-    if (confirmText !== 'DELETE') return
+    if (!email || confirmText.trim().toLowerCase() !== email.toLowerCase()) return
     setDeleting(true)
-    const res = await fetch('/api/account', { method: 'DELETE' })
+    const res = await fetch('/api/account', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm_email: confirmText.trim() }),
+    })
     if (res.ok) {
       await supabase.auth.signOut()
       router.push('/login')
       router.refresh()
     } else {
+      const data = await res.json().catch(() => null)
       setDeleting(false)
-      alert('Something went wrong. Please try again.')
+      alert(data?.error || 'Something went wrong. Please try again.')
     }
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-10 pb-28 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-28 ">
       <button onClick={() => router.back()} className="press flex items-center gap-1.5 text-[13px] text-text-muted mb-4">
         <ArrowLeft size={14} />
         Back
@@ -77,6 +93,13 @@ export default function SettingsPage() {
             <p className="text-[12px] text-text-muted">Email keugenelee11@gmail.com</p>
           </div>
         </a>
+        <button onClick={handleSignOut} className="press flex items-center gap-3 px-4 py-3.5 w-full text-left">
+          <LogOut size={16} className="text-text-muted" />
+          <div className="flex-1">
+            <p className="text-[14px] font-medium">Sign out</p>
+            <p className="text-[12px] text-text-muted">Log out of your account</p>
+          </div>
+        </button>
       </div>
 
       <div className="bg-bg-card border border-red-500/20 rounded-2xl px-4 py-4">
@@ -93,12 +116,12 @@ export default function SettingsPage() {
           </button>
         ) : (
           <div className="space-y-3">
-            <p className="text-[13px] text-text-muted">Type <span className="font-bold text-text">DELETE</span> to confirm.</p>
+            <p className="text-[13px] text-text-muted">Type your email <span className="font-bold text-text">{email || '…'}</span> to confirm.</p>
             <input
-              type="text"
+              type="email"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type DELETE"
+              placeholder="your email"
               className="bg-bg-input rounded-lg px-3 py-2 text-[13px] outline-none w-full border border-border focus:border-red-500"
               autoFocus
             />
@@ -111,7 +134,7 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={handleDelete}
-                disabled={confirmText !== 'DELETE' || deleting}
+                disabled={!email || confirmText.trim().toLowerCase() !== email.toLowerCase() || deleting}
                 className="press flex items-center gap-2 text-[13px] font-medium text-white bg-red-500 rounded-xl px-4 py-2 disabled:opacity-40"
               >
                 {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

@@ -5,13 +5,16 @@ import { createClient } from '@/lib/supabase/client'
 import { Send, Loader2, Image, X } from 'lucide-react'
 import type { WallPost } from '@/types'
 import { notifyFriends } from '@/lib/notifyFriends'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
+import { useMentionAutocomplete, MentionDropdown, notifyMentions } from '@/components/MentionAutocomplete'
 
 interface WallPostFormProps {
   wallOwnerId: string
   onPost: (post: WallPost) => void
+  variant?: 'inline' | 'modal'
 }
 
-export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps) {
+export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }: WallPostFormProps) {
   const supabase = createClient()
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,6 +22,12 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const mention = useMentionAutocomplete({
+    value: content,
+    setValue: setContent,
+    inputRef: textareaRef,
+  })
 
   useEffect(() => {
     const ta = textareaRef.current
@@ -71,35 +80,52 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
         content: content.trim(),
         media_url,
       })
-      .select('*, author:profiles!wall_posts_author_id_fkey(*)')
+      .select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .single()
 
     if (!error && data) {
       onPost(data as WallPost)
+      const bodyText = content.trim()
       setContent('')
       clearMedia()
-      // Notify friends that you posted
+
+      const mentionedIds = await notifyMentions(supabase, user.id, bodyText, {
+        post_type: 'wall_post',
+        post_id: data.id,
+      })
+
       notifyFriends(supabase, user.id, 'friend_post', {
         post_type: 'wall_post',
         post_id: data.id,
-        content: content.trim().slice(0, 100) || undefined,
-      })
+        content: bodyText.slice(0, 100) || undefined,
+      }, mentionedIds)
     }
     setLoading(false)
   }
 
   const isVideo = mediaFile?.type.startsWith('video/')
+  const isModal = variant === 'modal'
 
   return (
-    <form onSubmit={handleSubmit} className="bg-bg-card border border-border rounded-2xl p-3">
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        maxLength={2000}
-        placeholder="Write on the wall..."
-        className="w-full bg-transparent text-[14px] placeholder:text-text-muted/50 outline-none resize-none min-h-[4rem] overflow-hidden"
-      />
+    <form onSubmit={handleSubmit} className={isModal ? '' : 'bg-bg-card border border-border rounded-2xl p-3'}>
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={mention.onKeyDown}
+          maxLength={2000}
+          placeholder={isModal ? "What's on your mind?" : 'Write on the wall...'}
+          className={`w-full bg-transparent placeholder:text-text-muted/50 outline-none resize-none overflow-hidden ${isModal ? 'text-[16px] leading-[1.5] min-h-[200px]' : 'text-[14px] min-h-[4rem]'}`}
+        />
+        <MentionDropdown
+          suggestions={mention.suggestions}
+          highlightIndex={mention.highlightIndex}
+          onSelect={mention.select}
+          onHover={mention.setHighlightIndex}
+          className="top-full mt-1"
+        />
+      </div>
       {mediaPreview && (
         <div className="relative mb-2 inline-block">
           {isVideo ? (
@@ -112,7 +138,7 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
           </button>
         </div>
       )}
-      <div className="flex items-center justify-between">
+      <div className={`flex items-center justify-between ${isModal ? 'mt-5 pt-3 border-t border-border' : 'mt-3'}`}>
         <button type="button" onClick={() => fileRef.current?.click()} className="press text-text-muted hover:text-text p-1">
           <Image size={18} />
         </button>
@@ -120,7 +146,7 @@ export default function WallPostForm({ wallOwnerId, onPost }: WallPostFormProps)
         <button
           type="submit"
           disabled={loading || (!content.trim() && !mediaFile)}
-          className="bg-accent text-white rounded-xl px-4 py-1.5 text-[13px] font-medium press flex items-center gap-1.5 disabled:opacity-50"
+          className="bg-accent text-white rounded-xl px-5 py-2 text-[13px] font-semibold press flex items-center gap-1.5 disabled:opacity-50"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           Post

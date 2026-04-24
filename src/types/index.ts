@@ -2,13 +2,13 @@ export interface Profile {
   id: string
   email: string
   full_name: string
+  username: string
   avatar_url: string | null
   class_year: number | null
   major: string
   second_major: string
   minor: string
   residence_hall: string
-  job: string
   courses: string
   gender: string
   relationship_status: string
@@ -29,6 +29,7 @@ export interface Profile {
   clubs: string
   university: string
   onboarding_complete: boolean
+  hidden_from_directory: boolean
   private_fields: string
   last_seen: string | null
   notif_friend_requests: boolean
@@ -94,6 +95,7 @@ export interface Message {
   conversation_id: string
   sender_id: string
   content: string
+  media_url?: string | null
   created_at: string
   sender?: Profile
 }
@@ -137,6 +139,7 @@ export interface Comment {
   parent_id: string | null
   author_id: string
   content: string
+  media_url: string | null
   created_at: string
   author?: Profile
   replies?: Comment[]

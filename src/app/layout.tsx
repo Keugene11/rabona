@@ -4,11 +4,11 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Rabona",
-  description: "The social network for Stony Brook University students",
+  description: "A social network — open to anyone",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "StonyLoop",
+    title: "Rabona",
   },
 };
 

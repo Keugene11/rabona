@@ -2,11 +2,12 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Briefcase } from 'lucide-react'
+import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost, Group } from '@/types'
-import { HIDDEN_EMAILS, EMAIL_HIDDEN_FROM_OTHERS } from '@/lib/constants'
+import { EMAIL_HIDDEN_FROM_OTHERS } from '@/lib/constants'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import FriendButton from '@/components/FriendButton'
 import PokeButton from '@/components/PokeButton'
 import WallPostForm from '@/components/WallPostForm'
@@ -31,6 +32,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
   const [reportDetails, setReportDetails] = useState('')
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const [reportSent, setReportSent] = useState(false)
+  const [notInNetwork, setNotInNetwork] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -43,17 +45,29 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_PUBLIC_COLUMNS)
       .eq('id', id)
-      .single()
+      .single<Profile>()
 
     if (profileData) {
-      // Hide reviewer account from other users
-      if (HIDDEN_EMAILS.includes(profileData.email || '') && user && user.id !== id) {
+      // Hide flagged profiles from other users
+      if (profileData.hidden_from_directory && user && user.id !== id) {
         setLoading(false)
         return
       }
-      setProfile(profileData as Profile)
+      // Check if same university
+      if (user) {
+        const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
+        if (myProfile && profileData.university && myProfile.university !== profileData.university) {
+          setNotInNetwork(true)
+          setLoading(false)
+          return
+        }
+      }
+      // Fetch email/phone via RPC (respects private_fields)
+      const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: id })
+      const contactRow = Array.isArray(contact) ? contact[0] : contact
+      setProfile({ ...profileData, email: contactRow?.email ?? '', phone: contactRow?.phone ?? '' })
     }
 
     // Check if current user is friends with this profile (accepted friendship in either direction)
@@ -71,7 +85,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     // Load wall posts
     const { data: posts } = await supabase
       .from('wall_posts')
-      .select('*, author:profiles!wall_posts_author_id_fkey(*)')
+      .select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('wall_owner_id', id)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -81,14 +95,16 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     // Load friends (accepted friendships in either direction)
     const { data: friendData } = await supabase
       .from('friendships')
-      .select('requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
+      .select(`requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(${PROFILE_PUBLIC_COLUMNS}), addressee:profiles!friendships_addressee_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('status', 'accepted')
       .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
 
     if (friendData) {
-      setFriends(friendData.map(f =>
+      const others = friendData.map(f =>
         (f.requester_id === id ? f.addressee : f.requester) as unknown as Profile
-      ).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
+      ).filter(p => p && !p.hidden_from_directory)
+      const unique = Array.from(new Map(others.map(p => [p.id, p])).values())
+      setFriends(unique)
     }
 
     // Load user's groups
@@ -130,11 +146,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     if (user && user.id === id) {
       const { data: views } = await supabase
         .from('profile_views')
-        .select('*, viewer:profiles!profile_views_viewer_id_fkey(*)')
+        .select(`*, viewer:profiles!profile_views_viewer_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
         .eq('profile_id', id)
         .order('created_at', { ascending: false })
         .limit(50)
-      if (views) setProfileViews(views.map((v: { viewer: Profile }) => v.viewer).filter(p => !HIDDEN_EMAILS.includes(p.email || '')))
+      if (views) setProfileViews(views.map((v: { viewer: Profile }) => v.viewer).filter(p => !p.hidden_from_directory))
     }
 
     setLoading(false)
@@ -174,9 +190,17 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     )
   }
 
+  if (notInNetwork) {
+    return (
+      <div className="max-w-xl mx-auto px-4 pt-6 text-center">
+        <p className="text-text-muted">This user is not in your school&apos;s network.</p>
+      </div>
+    )
+  }
+
   if (!profile) {
     return (
-      <div className="max-w-lg mx-auto px-4 pt-12 text-center">
+      <div className="max-w-xl mx-auto px-4 pt-6 text-center">
         <p className="text-text-muted">User not found.</p>
       </div>
     )
@@ -192,8 +216,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     if (privateFields.includes(`${field}:followers`)) return isFriend
     return true
   }
+  const courses = profile.courses ? profile.courses.split(', ').filter(Boolean) : []
+  const clubs = profile.clubs ? profile.clubs.split(', ').filter(Boolean) : []
+
   return (
-    <div className="max-w-5xl mx-auto px-4 pt-12 pb-28">
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-28">
 
       {/* Report modal */}
       {showReport && (
@@ -254,7 +281,8 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           </div>
           <div className="min-w-0">
             <h1 className="text-[16px] font-bold tracking-tight truncate">{profile.full_name}</h1>
-            {show('major', profile.major) && (
+            {profile.username && <p className="text-[12px] text-text-muted truncate">@{profile.username}</p>}
+            {profile.major && (
               <p className="text-[12px] text-text-muted truncate">{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>
             )}
           </div>
@@ -286,11 +314,12 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           {/* Name & subtitle */}
           <div className="mb-3">
             <h1 className="text-[22px] font-bold tracking-tight">{profile.full_name}</h1>
+            {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
             <div className="text-[13px] text-text-muted space-y-0.5 mt-0.5">
-              {show('major', profile.major) && <p>{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>}
-              {show('job', profile.job) && (
+              {profile.major && <p>{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>}
+              {profile.residence_hall && (
                 <p className="flex items-center gap-1">
-                  <Briefcase size={12} /> {profile.job}
+                  <MapPin size={12} /> {profile.residence_hall}
                 </p>
               )}
               {profile.last_seen && (
@@ -432,17 +461,35 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* School & Work */}
-          {(show('university', profile.university) || show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || show('job', profile.job) || profile.class_year) && (
+          {/* Academics */}
+          {(show('major', profile.major) || show('second_major', profile.second_major) || show('minor', profile.minor) || profile.class_year) && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">School & Work</p>
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Academics</p>
               <div className="space-y-0.5">
-                {show('university', profile.university) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.university}</span></div>}
                 {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
                 {show('second_major', profile.second_major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">2nd Major:</span> <span>{profile.second_major}</span></div>}
                 {show('minor', profile.minor) && <div className="flex items-center gap-2 text-[13px] py-0.5"><BookOpen size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Minor:</span> <span>{profile.minor}</span></div>}
-                {show('job', profile.job) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Briefcase size={13} className="text-text-muted flex-shrink-0" /><span>{profile.job}</span></div>}
                 {profile.class_year && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Class of</span> <span>{profile.class_year}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Courses */}
+          {courses.length > 0 && (
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Courses</p>
+              <p className="text-[13px]">{courses.join(', ')}</p>
+            </div>
+          )}
+
+          {/* Campus */}
+          {(show('residence_hall', profile.residence_hall) || show('fraternity_sorority', profile.fraternity_sorority) || clubs.length > 0) && (
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Campus</p>
+              <div className="space-y-0.5">
+                {show('residence_hall', profile.residence_hall) && <div className="flex items-center gap-2 text-[13px] py-0.5"><MapPin size={13} className="text-text-muted flex-shrink-0" /><span>{profile.residence_hall}</span></div>}
+                {show('fraternity_sorority', profile.fraternity_sorority) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Greek Life:</span> <span>{profile.fraternity_sorority}</span></div>}
+                {clubs.length > 0 && <div className="flex items-start gap-2 text-[13px] py-0.5"><Users size={13} className="text-text-muted flex-shrink-0 mt-0.5" /><span>{clubs.join(', ')}</span></div>}
               </div>
             </div>
           )}
@@ -492,8 +539,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
         {/* RIGHT COLUMN — The Wall */}
         <div className={`flex-1 min-w-0 ${activeTab === 'wall' ? 'block' : 'hidden'} md:block`}>
-          <h2 className="text-[18px] font-bold mb-3 hidden md:block">The Wall</h2>
-
         {currentUserId && !isBlocked && (() => {
           const wallSetting = profile.wall_posts_from || 'everyone'
           const canPost = currentUserId === id || wallSetting === 'everyone' || (wallSetting === 'friends' && isFriend)

@@ -34,7 +34,9 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // If not logged in and not on auth pages, redirect to login
+    // Signup is open to anyone — no email-domain gate.
+
+    // If not logged in and not on auth/public pages, redirect to login
     if (
       !user &&
       !request.nextUrl.pathname.startsWith('/login') &&

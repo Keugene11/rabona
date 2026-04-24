@@ -6,6 +6,7 @@ import { Loader2, Users, LogOut, Trash2, Send, Image, X, Pencil, Check, Camera, 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Group, GroupMember, GroupPost, Profile } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
@@ -36,6 +37,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [savingGroup, setSavingGroup] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletingGroup, setDeletingGroup] = useState(false)
+  const [confirmDeletePostId, setConfirmDeletePostId] = useState<string | null>(null)
 
   useEffect(() => {
     loadGroup()
@@ -50,7 +52,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     // Load group
     const { data: groupData } = await supabase
       .from('groups')
-      .select('*, creator:profiles!groups_created_by_fkey(*)')
+      .select(`*, creator:profiles!groups_created_by_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('id', id)
       .single()
 
@@ -59,7 +61,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     // Load members
     const { data: memberData } = await supabase
       .from('group_members')
-      .select('*, user:profiles!group_members_user_id_fkey(*)')
+      .select(`*, user:profiles!group_members_user_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('group_id', id)
       .order('joined_at', { ascending: true })
 
@@ -73,7 +75,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     // Load posts
     const { data: postData } = await supabase
       .from('group_posts')
-      .select('*, author:profiles!group_posts_author_id_fkey(*)')
+      .select(`*, author:profiles!group_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('group_id', id)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -95,6 +97,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         user_id: group.created_by,
         actor_id: currentUserId,
         type: 'group_join',
+        post_type: 'group',
+        post_id: id,
       })
     }
     loadGroup()
@@ -135,7 +139,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         content: postContent.trim(),
         media_url,
       })
-      .select('*, author:profiles!group_posts_author_id_fkey(*)')
+      .select(`*, author:profiles!group_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .single()
 
     if (!error && data) {
@@ -243,14 +247,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   if (!group) {
     return (
-      <div className="max-w-lg mx-auto px-4 pt-12 text-center">
+      <div className="max-w-xl mx-auto px-4 pt-6 text-center">
         <p className="text-text-muted">Group not found.</p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pt-12 pb-28 ">
+    <div className="max-w-4xl mx-auto px-4 pt-6 pb-28 ">
 
       <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
 
@@ -498,10 +502,16 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                           <Pencil size={13} />
                         </button>
                       )}
-                      {(currentUserId === post.author_id || isAdmin) && (
-                        <button onClick={() => handleDeletePost(post.id)} className="press text-text-muted hover:text-red-500 p-1">
+                      {(currentUserId === post.author_id || isAdmin) && confirmDeletePostId !== post.id && (
+                        <button onClick={() => setConfirmDeletePostId(post.id)} className="press text-text-muted hover:text-red-500 p-1">
                           <Trash2 size={14} />
                         </button>
+                      )}
+                      {confirmDeletePostId === post.id && (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { handleDeletePost(post.id); setConfirmDeletePostId(null) }} className="press text-red-500 text-[11px] font-medium">Delete</button>
+                          <button onClick={() => setConfirmDeletePostId(null)} className="press text-text-muted text-[11px] font-medium">Cancel</button>
+                        </div>
                       )}
                     </div>
                   </div>

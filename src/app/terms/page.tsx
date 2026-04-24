@@ -18,7 +18,7 @@ export default function TermsPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">2. Eligibility</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          You must be at least 13 years old to use Rabona. By signing up, you confirm that you meet this requirement.
+          Rabona is open to anyone who agrees to these terms. You must be at least 13 years old to use the service.
         </p>
       </section>
 

@@ -1,4 +1,4 @@
--- StonyLoop Database Schema
+-- Rabona Database Schema
 -- Run this in your Supabase SQL Editor
 
 -- Profiles table (extends auth.users)

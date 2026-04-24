@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 interface ConversationItem {
   id: string
@@ -31,7 +32,7 @@ export default function MessagesPage() {
 
     const { data } = await supabase
       .from('conversations')
-      .select('*, user1:profiles!conversations_user1_id_fkey(*), user2:profiles!conversations_user2_id_fkey(*)')
+      .select(`*, user1:profiles!conversations_user1_id_fkey(${PROFILE_PUBLIC_COLUMNS}), user2:profiles!conversations_user2_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
       .order('last_message_at', { ascending: false })
 
@@ -64,7 +65,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-12 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 ">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Messages</h1>
         <div className="accent-bar" />

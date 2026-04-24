@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { REVIEWER_EMAIL } from '@/lib/constants'
 
 export async function POST(request: Request) {
   try {
@@ -8,6 +9,13 @@ export async function POST(request: Request) {
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
+    }
+
+    if (typeof email !== 'string' || email.trim().toLowerCase() !== REVIEWER_EMAIL.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'Email and password sign-in is disabled. Use Google or Apple.' },
+        { status: 403 }
+      )
     }
 
     const cookieStore = await cookies()

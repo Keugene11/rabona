@@ -7,16 +7,30 @@ export default function LastSeenUpdater() {
   const supabase = createClient()
 
   useEffect(() => {
-    async function update() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', user.id)
+    let userId: string | null = null
+
+    async function ping() {
+      if (document.hidden) return
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        userId = user.id
       }
+      await supabase
+        .from('profiles')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('id', userId)
     }
-    update()
+
+    ping()
+    const interval = setInterval(ping, 30000)
+    const onVisible = () => { if (!document.hidden) ping() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [supabase])
 
   return null

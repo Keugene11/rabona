@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, Plus, Users, Search } from 'lucide-react'
 import Link from 'next/link'
 import type { Group } from '@/types'
+import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function GroupsPage() {
   const supabase = createClient()
@@ -39,7 +40,7 @@ export default function GroupsPage() {
     // Get all groups for this university
     const { data: groups } = await supabase
       .from('groups')
-      .select('*, creator:profiles!groups_created_by_fkey(*)')
+      .select(`*, creator:profiles!groups_created_by_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .eq('university', myUniversity)
       .order('created_at', { ascending: false })
 
@@ -79,7 +80,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-12 pb-28 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-28 ">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-[24px] font-bold tracking-tight">Groups</h1>
