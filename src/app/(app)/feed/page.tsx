@@ -55,10 +55,18 @@ export default function FeedPage() {
     }
     setBlockedIds(bIds)
 
-    // Load all wall posts (only posts on their own wall)
+    // Feed = posts authored by you or your friends, on their own wall.
+    const visibleAuthors = [user.id, ...fIds]
+    if (visibleAuthors.length === 0) {
+      setPosts([])
+      setHasMore(false)
+      setLoading(false)
+      return
+    }
     const { data: postData } = await supabase
       .from('wall_posts')
       .select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
+      .in('author_id', visibleAuthors)
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE * 2)
 
@@ -76,10 +84,12 @@ export default function FeedPage() {
     setLoadingMore(true)
 
     const lastPost = posts[posts.length - 1]
+    const visibleAuthors = [currentUserId, ...friendIds]
 
     const { data: postData } = await supabase
       .from('wall_posts')
       .select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
+      .in('author_id', visibleAuthors)
       .lt('created_at', lastPost.created_at)
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE * 2)
@@ -93,7 +103,7 @@ export default function FeedPage() {
     }
 
     setLoadingMore(false)
-  }, [loadingMore, hasMore, posts, blockedIds, supabase])
+  }, [loadingMore, hasMore, posts, blockedIds, currentUserId, friendIds, supabase])
 
   // Infinite scroll
   useEffect(() => {
@@ -127,7 +137,7 @@ export default function FeedPage() {
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Home</h1>
         <div className="accent-bar" />
-        <p className="text-[13px] text-text-muted mt-2">A social network — open to anyone.</p>
+        <p className="text-[13px] text-text-muted mt-2">Posts from you and your friends.</p>
       </div>
 
       {/* Compose */}
@@ -138,7 +148,7 @@ export default function FeedPage() {
       {/* Posts */}
       {posts.length === 0 ? (
         <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
-          <p className="text-[14px] text-text-muted">No posts yet. Be the first to post!</p>
+          <p className="text-[14px] text-text-muted">{friendIds.length === 0 ? 'No friends yet. Share your invite link from your profile to get started.' : 'No posts yet.'}</p>
         </div>
       ) : (
         <div className="space-y-3">

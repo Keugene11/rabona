@@ -11,12 +11,15 @@ export default function LoginPage() {
   const [showEmailLogin, setShowEmailLogin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [invitedBy, setInvitedBy] = useState('')
   const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform()
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const errorParam = params.get('error')
     if (errorParam) setError(errorParam)
+    const fromParam = params.get('from')
+    if (fromParam) setInvitedBy(fromParam)
   }, [])
 
   useEffect(() => {
@@ -170,11 +173,17 @@ export default function LoginPage() {
           <span className="text-accent">[</span> Rabona <span className="text-accent">]</span>
         </h1>
 
-        <ul className="text-[13px] text-text-muted mt-5 text-left space-y-2 list-disc pl-5">
-          <li>Write short updates and posts for your friends to read and like</li>
-          <li>Meet people, make friends, join groups</li>
-          <li>Open to anyone</li>
-        </ul>
+        {invitedBy ? (
+          <p className="text-[14px] text-text mt-4">
+            <span className="font-semibold">{invitedBy}</span> invited you to Rabona. Sign up below and you&apos;ll be friends.
+          </p>
+        ) : (
+          <ul className="text-[13px] text-text-muted mt-5 text-left space-y-2 list-disc pl-5">
+            <li>Write short updates and posts for your friends to read and like</li>
+            <li>Meet people, make friends, join groups</li>
+            <li>Invite-only — you see posts from your friends</li>
+          </ul>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-2.5 text-[13px] mt-6 text-left">

@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { acceptInviteIfPresent } from '@/lib/invite'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -30,11 +31,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
-      // Signup gating is enforced by the handle_new_user DB trigger.
       if (user) {
         await supabase.from('profiles').update({
           onboarding_complete: true,
         }).eq('id', user.id)
+        await acceptInviteIfPresent(supabase, cookieStore, user.id)
       }
       return NextResponse.redirect(`${origin}${next}`)
     }

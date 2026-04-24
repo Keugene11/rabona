@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft } from 'lucide-react'
+import { Loader2, Camera, MapPin, GraduationCap, BookOpen, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, Users, ArrowLeft, Link2, Check } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import { getUniversityData, type UniversityData } from '@/lib/university-data'
 import WallPostForm from '@/components/WallPostForm'
@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [showViewers, setShowViewers] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
+  const [inviteCopied, setInviteCopied] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [uniData, setUniData] = useState<UniversityData | null>(null)
 
@@ -515,6 +516,30 @@ export default function ProfilePage() {
                 </div>
               )}
           </div>
+
+          {/* Invite Link */}
+          {profile.username && (
+            <button
+              type="button"
+              onClick={async () => {
+                const url = `${window.location.origin}/join/${profile.username}`
+                try {
+                  await navigator.clipboard.writeText(url)
+                  setInviteCopied(true)
+                  setTimeout(() => setInviteCopied(false), 1500)
+                } catch {
+                  window.prompt('Copy your invite link:', url)
+                }
+              }}
+              className="press bg-bg-card border border-border rounded-2xl px-4 py-3 w-full flex items-center gap-2.5 text-left"
+            >
+              {inviteCopied ? <Check size={16} className="text-accent" /> : <Link2 size={16} className="text-text-muted" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Invite link</p>
+                <p className="text-[13px] truncate">{inviteCopied ? 'Copied!' : `Share to auto-friend new signups`}</p>
+              </div>
+            </button>
+          )}
 
           {/* About */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('about_me')}>
