@@ -2,38 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
-import DirectoryFilters from '@/components/DirectoryFilters'
+import { Loader2, Search } from 'lucide-react'
 import ProfileCard from '@/components/ProfileCard'
 import type { Profile } from '@/types'
 
-interface Filters {
-  name: string
-  gender: string
-  major: string
-  class_year: string
-  hometown: string
-  high_school: string
-  relationship_status: string
-  interested_in: string
-}
-
-const emptyFilters: Filters = {
-  name: '',
-  gender: '',
-  major: '',
-  class_year: '',
-  hometown: '',
-  high_school: '',
-  relationship_status: '',
-  interested_in: '',
-}
-
 export default function DirectoryPage() {
   const supabase = createClient()
-  const [filters, setFilters] = useState<Filters>(emptyFilters)
-  const [allUsers, setAllUsers] = useState<Profile[]>([])
-  const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
+  const [query, setQuery] = useState('')
+  const [friends, setFriends] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -42,99 +18,78 @@ export default function DirectoryPage() {
       if (!user) return
 
       const { data: blocks } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id)
-      const blocked = blocks ? blocks.map(b => b.blocked_id) : []
+      const blocked = new Set((blocks || []).map(b => b.blocked_id))
 
       const { data: friendData } = await supabase
         .from('friendships')
         .select('requester_id, addressee_id')
         .eq('status', 'accepted')
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-      const friendSet = new Set((friendData || []).map(f =>
-        f.requester_id === user.id ? f.addressee_id : f.requester_id
-      ))
-      setFriendIds(friendSet)
+
+      const friendIds = (friendData || [])
+        .map(f => (f.requester_id === user.id ? f.addressee_id : f.requester_id))
+        .filter(id => !blocked.has(id))
+
+      if (friendIds.length === 0) {
+        setLoading(false)
+        return
+      }
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, major, class_year, gender, hometown, high_school, relationship_status, interested_in, last_seen')
-        .eq('hidden_from_directory', false)
+        .select('id, full_name, avatar_url, major, class_year, last_seen')
+        .in('id', friendIds)
         .order('last_seen', { ascending: false, nullsFirst: false })
 
-      if (profiles) {
-        const filtered = (profiles as Profile[]).filter(p => !blocked.includes(p.id))
-        const friends = filtered.filter(p => friendSet.has(p.id))
-        const others = filtered.filter(p => !friendSet.has(p.id))
-        setAllUsers([...friends, ...others])
-      }
+      if (profiles) setFriends(profiles as Profile[])
       setLoading(false)
     }
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const displayList = allUsers.filter(p => {
-    if (filters.name && !p.full_name.toLowerCase().includes(filters.name.toLowerCase())) return false
-    if (filters.major && !p.major?.toLowerCase().includes(filters.major.toLowerCase())) return false
-    if (filters.gender && p.gender !== filters.gender) return false
-    if (filters.class_year && p.class_year?.toString() !== filters.class_year) return false
-    if (filters.hometown && !p.hometown?.toLowerCase().includes(filters.hometown.toLowerCase())) return false
-    if (filters.high_school && !p.high_school?.toLowerCase().includes(filters.high_school.toLowerCase())) return false
-    if (filters.relationship_status && p.relationship_status !== filters.relationship_status) return false
-    if (filters.interested_in && p.interested_in !== filters.interested_in) return false
-    return true
-  })
+  const q = query.trim().toLowerCase()
+  const displayList = q
+    ? friends.filter(p => p.full_name?.toLowerCase().includes(q))
+    : friends
 
   return (
-    <div className="max-w-xl mx-auto px-4 pt-6 pb-28 ">
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-28">
       <div className="mb-4">
         <h1 className="text-[24px] font-bold tracking-tight">Directory</h1>
         <div className="accent-bar" />
       </div>
 
-      <DirectoryFilters filters={filters} onChange={setFilters} />
-
-      <div className="mt-4">
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="animate-spin text-text-muted" size={24} />
-          </div>
-        ) : displayList.length > 0 ? (
-          <div className="space-y-4">
-            {(() => {
-              const friendList = displayList.filter(p => friendIds.has(p.id))
-              const otherList = displayList.filter(p => !friendIds.has(p.id))
-              return (
-                <>
-                  {friendList.length > 0 && (
-                    <div>
-                      <p className="text-[12px] text-text-muted font-semibold uppercase tracking-wide mb-2">Friends · {friendList.length}</p>
-                      <div className="space-y-2">
-                        {friendList.map(profile => (
-                          <ProfileCard key={profile.id} profile={profile} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {otherList.length > 0 && (
-                    <div>
-                      <p className="text-[12px] text-text-muted font-semibold uppercase tracking-wide mb-2">Everyone · {otherList.length}</p>
-                      <div className="space-y-2">
-                        {otherList.map(profile => (
-                          <ProfileCard key={profile.id} profile={profile} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        ) : (
-          <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
-            <p className="text-text-muted text-[14px]">No users found.</p>
-          </div>
-        )}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your friends..."
+          className="w-full bg-bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-text-muted/50 outline-none focus:border-text-muted transition-colors"
+        />
       </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="animate-spin text-text-muted" size={24} />
+        </div>
+      ) : displayList.length > 0 ? (
+        <div className="space-y-2">
+          {displayList.map(profile => (
+            <ProfileCard key={profile.id} profile={profile} />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
+          <p className="text-text-muted text-[14px]">
+            {friends.length === 0
+              ? 'No friends yet. Share your invite link from Home to get started.'
+              : 'No friends match that name.'}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
