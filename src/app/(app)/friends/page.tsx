@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, UserCheck, UserX, Search } from 'lucide-react'
+import { Loader2, UserCheck, UserX, Search, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
@@ -17,6 +17,9 @@ export default function FriendsPage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState('')
   const [query, setQuery] = useState('')
+  const [addHandle, setAddHandle] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addStatus, setAddStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; message: string }>({ kind: 'idle', message: '' })
 
   useEffect(() => {
     loadData()
@@ -89,6 +92,69 @@ export default function FriendsPage() {
     setRequests(prev => prev.filter(r => r.id !== friendshipId))
   }
 
+  async function addFriend(e: React.FormEvent) {
+    e.preventDefault()
+    const handle = addHandle.trim().replace(/^@/, '').toLowerCase()
+    if (!handle) return
+    setAdding(true)
+    setAddStatus({ kind: 'idle', message: '' })
+
+    try {
+      const { data: target } = await supabase
+        .from('profiles')
+        .select('id, full_name, username')
+        .eq('username', handle)
+        .maybeSingle()
+
+      if (!target) {
+        setAddStatus({ kind: 'err', message: `No user @${handle}` })
+        return
+      }
+      if (target.id === userId) {
+        setAddStatus({ kind: 'err', message: "That's you" })
+        return
+      }
+
+      const { data: existing } = await supabase
+        .from('friendships')
+        .select('status, requester_id')
+        .or(`and(requester_id.eq.${userId},addressee_id.eq.${target.id}),and(requester_id.eq.${target.id},addressee_id.eq.${userId})`)
+        .maybeSingle()
+
+      if (existing) {
+        if (existing.status === 'accepted') {
+          setAddStatus({ kind: 'err', message: `Already friends with @${handle}` })
+        } else if (existing.requester_id === userId) {
+          setAddStatus({ kind: 'err', message: `Request to @${handle} already sent` })
+        } else {
+          setAddStatus({ kind: 'err', message: `@${handle} already sent you a request — see Requests` })
+        }
+        return
+      }
+
+      const { error } = await supabase.from('friendships').insert({
+        requester_id: userId,
+        addressee_id: target.id,
+        status: 'pending',
+      })
+      if (error) {
+        setAddStatus({ kind: 'err', message: 'Could not send request' })
+        return
+      }
+
+      await supabase.from('notifications').insert({
+        user_id: target.id,
+        actor_id: userId,
+        type: 'friend_request',
+      })
+
+      setAddStatus({ kind: 'ok', message: `Request sent to @${handle}` })
+      setAddHandle('')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -135,7 +201,37 @@ export default function FriendsPage() {
         <div className="accent-bar" />
       </div>
 
-      {self?.username && <InviteLinkCard username={self.username} className="mb-4" />}
+      {self?.username && <InviteLinkCard username={self.username} className="mb-3" />}
+
+      {/* Add friend by @handle */}
+      <form onSubmit={addFriend} className="mb-4">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[14px]">@</span>
+            <input
+              type="text"
+              value={addHandle}
+              onChange={(e) => { setAddHandle(e.target.value); setAddStatus({ kind: 'idle', message: '' }) }}
+              placeholder="username"
+              autoComplete="off"
+              autoCapitalize="none"
+              className="w-full bg-bg-card border border-border rounded-xl pl-8 pr-3 py-2.5 text-[14px] outline-none focus:border-text-muted transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={adding || !addHandle.trim()}
+            className="press bg-accent text-white font-semibold text-[13px] px-4 rounded-xl flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <UserPlus size={14} /> Add
+          </button>
+        </div>
+        {addStatus.message && (
+          <p className={`text-[12px] mt-2 ${addStatus.kind === 'ok' ? 'text-green-600' : 'text-red-500'}`}>
+            {addStatus.message}
+          </p>
+        )}
+      </form>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-bg-input rounded-xl p-1 mb-4">
