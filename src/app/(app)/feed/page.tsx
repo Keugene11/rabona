@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Link2, Check } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { WallPost } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import WallPostItem from '@/components/WallPost'
 import WallPostForm from '@/components/WallPostForm'
+import InviteLinkCard from '@/components/InviteLinkCard'
 
 
 export default function FeedPage() {
@@ -19,13 +20,7 @@ export default function FeedPage() {
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
   const [username, setUsername] = useState('')
-  const [inviteCopied, setInviteCopied] = useState(false)
-  const [origin, setOrigin] = useState('')
   const PAGE_SIZE = 20
-
-  useEffect(() => {
-    setOrigin(window.location.origin)
-  }, [])
 
   useEffect(() => {
     loadFeed()
@@ -151,29 +146,7 @@ export default function FeedPage() {
         <p className="text-[13px] text-text-muted mt-2">Posts from you and your friends.</p>
       </div>
 
-      {/* Invite link */}
-      {username && origin && (
-        <button
-          type="button"
-          onClick={async () => {
-            const url = `${origin}/join/${username}`
-            try {
-              await navigator.clipboard.writeText(url)
-              setInviteCopied(true)
-              setTimeout(() => setInviteCopied(false), 1500)
-            } catch {
-              window.prompt('Copy your invite link:', url)
-            }
-          }}
-          className="press bg-bg-card border border-border rounded-2xl px-4 py-3 w-full flex items-center gap-2.5 text-left mb-4"
-        >
-          {inviteCopied ? <Check size={16} className="text-accent flex-shrink-0" /> : <Link2 size={16} className="text-text-muted flex-shrink-0" />}
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Your invite link{inviteCopied ? ' · Copied!' : ''}</p>
-            <p className="text-[13px] font-mono truncate">{origin.replace(/^https?:\/\//, '')}/join/{username}</p>
-          </div>
-        </button>
-      )}
+      <InviteLinkCard username={username} className="mb-4" />
 
       {/* Compose */}
       <div className="mb-4">

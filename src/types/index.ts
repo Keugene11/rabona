@@ -6,10 +6,6 @@ export interface Profile {
   avatar_url: string | null
   class_year: number | null
   major: string
-  second_major: string
-  minor: string
-  residence_hall: string
-  courses: string
   gender: string
   relationship_status: string
   looking_for: string
@@ -25,8 +21,6 @@ export interface Profile {
   high_school: string
   websites: string
   birthday: string
-  fraternity_sorority: string
-  clubs: string
   university: string
   onboarding_complete: boolean
   hidden_from_directory: boolean

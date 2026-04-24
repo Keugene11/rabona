@@ -7,19 +7,20 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 type CookieStore = Awaited<ReturnType<typeof NextCookies>>
 
-// If the invite cookie is set and valid, create an accepted friendship
-// between the inviter and the freshly-authenticated user. Safe to call on
-// every login — duplicate-key failures and self-invites are swallowed.
+// Create an accepted friendship between the inviter and the freshly-signed-up user.
+// Only fires on *first* sign-in (onboarding_complete still false), so a pre-planted
+// cookie can't hijack an existing account's next login. The cookie is always cleared.
 export async function acceptInviteIfPresent(
   supabase: SupabaseClient,
   cookieStore: CookieStore,
-  userId: string
+  userId: string,
+  isNewSignup: boolean
 ) {
   const inviterId = cookieStore.get(INVITER_COOKIE)?.value
-  if (!inviterId || !UUID_RE.test(inviterId) || inviterId === userId) {
-    cookieStore.delete(INVITER_COOKIE)
-    return
-  }
+  cookieStore.delete(INVITER_COOKIE)
+
+  if (!isNewSignup) return
+  if (!inviterId || !UUID_RE.test(inviterId) || inviterId === userId) return
 
   const { error } = await supabase
     .from('friendships')
@@ -33,6 +34,4 @@ export async function acceptInviteIfPresent(
   if (error && error.code !== '23505') {
     console.error('auto-friend insert failed', error)
   }
-
-  cookieStore.delete(INVITER_COOKIE)
 }

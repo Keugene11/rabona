@@ -40,10 +40,12 @@ export async function POST(request: Request) {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
+      const { data: existing } = await supabase.from('profiles').select('onboarding_complete').eq('id', user.id).maybeSingle()
+      const isNewSignup = !existing?.onboarding_complete
       await supabase.from('profiles').update({
         onboarding_complete: true,
       }).eq('id', user.id)
-      await acceptInviteIfPresent(supabase, cookieStore, user.id)
+      await acceptInviteIfPresent(supabase, cookieStore, user.id, isNewSignup)
     }
 
     return NextResponse.json({ ok: true, redirectTo: '/feed' })

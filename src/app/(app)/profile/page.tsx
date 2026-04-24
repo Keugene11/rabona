@@ -2,19 +2,18 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Camera, MapPin, GraduationCap, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, ArrowLeft, Link2, Check } from 'lucide-react'
+import { Loader2, Camera, MapPin, GraduationCap, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, ArrowLeft } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import WallPostForm from '@/components/WallPostForm'
 import WallPostItem from '@/components/WallPost'
 import AvatarCropper from '@/components/AvatarCropper'
+import InviteLinkCard from '@/components/InviteLinkCard'
 import type { Profile, WallPost, Group } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
 export default function ProfilePage() {
   const supabase = createClient()
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -28,10 +27,6 @@ export default function ProfilePage() {
   const [showViewers, setShowViewers] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
-  const [inviteCopied, setInviteCopied] = useState(false)
-  const [origin, setOrigin] = useState('')
-
-  useEffect(() => { setOrigin(window.location.origin) }, [])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { loadProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,7 +126,6 @@ export default function ProfilePage() {
   const movieTags = profile.favorite_movies ? profile.favorite_movies.split(', ').filter(Boolean) : []
   const empty = 'text-text-muted/40 italic cursor-pointer'
   const inputClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none w-full border border-border focus:border-text-muted'
-  const selectClass = 'bg-bg-input rounded-lg px-2 py-1 text-[13px] outline-none border border-border focus:border-text-muted cursor-pointer'
 
   // Editable row: click to open edit sheet
   function EditableRow({ icon: Icon, label, field, value, type = 'text', options }: {
@@ -400,7 +394,6 @@ export default function ProfilePage() {
             {profile.username && <p className="text-[13px] text-text-muted truncate">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted truncate">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -435,7 +428,6 @@ export default function ProfilePage() {
             {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted mt-0.5">
               {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
-              {profile.residence_hall ? ` · ${profile.residence_hall}` : ''}
             </p>
             <div className="flex items-center gap-3 mt-2">
               <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
@@ -483,28 +475,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Invite Link */}
-          {profile.username && origin && (
-            <button
-              type="button"
-              onClick={async () => {
-                const url = `${origin}/join/${profile.username}`
-                try {
-                  await navigator.clipboard.writeText(url)
-                  setInviteCopied(true)
-                  setTimeout(() => setInviteCopied(false), 1500)
-                } catch {
-                  window.prompt('Copy your invite link:', url)
-                }
-              }}
-              className="press bg-bg-card border border-border rounded-2xl px-4 py-3 w-full flex items-center gap-2.5 text-left"
-            >
-              {inviteCopied ? <Check size={16} className="text-accent flex-shrink-0" /> : <Link2 size={16} className="text-text-muted flex-shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Invite link{inviteCopied ? ' · Copied!' : ''}</p>
-                <p className="text-[13px] font-mono truncate">{origin.replace(/^https?:\/\//, '')}/join/{profile.username}</p>
-              </div>
-            </button>
-          )}
+          {profile.username && <InviteLinkCard username={profile.username} />}
 
           {/* About */}
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 press" onClick={() => setEditing('about_me')}>
