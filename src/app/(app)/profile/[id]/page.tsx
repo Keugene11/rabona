@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag, Share2, Users } from 'lucide-react'
+import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost } from '@/types'
@@ -99,9 +99,12 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
       .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
 
     if (friendData) {
+      // RLS returns only mutuals when viewing someone else's profile, plus the row
+      // representing the viewer's own friendship with the profile owner — strip the viewer.
+      const viewerId = user?.id
       const others = friendData.map(f =>
         (f.requester_id === id ? f.addressee : f.requester) as unknown as Profile
-      ).filter(p => p && !p.hidden_from_directory)
+      ).filter(p => p && !p.hidden_from_directory && p.id !== viewerId)
       const unique = Array.from(new Map(others.map(p => [p.id, p])).values())
       setFriends(unique)
     }
@@ -406,17 +409,13 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Friends */}
+          {/* Friends — full list on own profile, mutuals only when viewing someone else */}
           {friends.length > 0 && (
             <div className="bg-bg-card border border-border rounded-2xl px-4 py-4 mb-3">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[13px] font-semibold">Friends ({friends.length})</p>
-                <Link
-                  href={`/profile/${id}/network`}
-                  className="press flex items-center gap-1.5 text-[11px] font-semibold text-accent bg-accent/10 rounded-full px-3 py-1"
-                >
-                  <Share2 size={12} /> Visualize
-                </Link>
+                <p className="text-[13px] font-semibold">
+                  {currentUserId === id ? 'Friends' : 'Mutual friends'} ({friends.length})
+                </p>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {friends.map(f => (

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Loader2, Camera, MapPin, GraduationCap, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, Share2, ArrowLeft } from 'lucide-react'
+import { Loader2, Camera, MapPin, GraduationCap, Heart, Phone, Globe, School, Cake, Home, Mail, X, Settings, Eye, ArrowLeft } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import WallPostForm from '@/components/WallPostForm'
 import WallPostItem from '@/components/WallPost'
@@ -537,14 +537,6 @@ export default function ProfilePage() {
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-4">
             <div className="flex items-center justify-between mb-3">
               <Link href="/friends" className="press text-[13px] font-semibold hover:underline">Friends ({friends.length})</Link>
-              {friends.length > 0 && (
-                <Link
-                  href={`/profile/${userId}/network`}
-                  className="press flex items-center gap-1.5 text-[11px] font-semibold text-accent bg-accent/10 rounded-full px-3 py-1"
-                >
-                  <Share2 size={12} /> Visualize
-                </Link>
-              )}
             </div>
             {friends.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
