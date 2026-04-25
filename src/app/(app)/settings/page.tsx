@@ -22,8 +22,9 @@ export default function SettingsPage() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    // Hard nav so the React tree is torn down before any auth-dependent
+    // child re-renders against a now-empty session.
+    window.location.href = '/login'
   }
 
   async function handleDelete() {
@@ -36,8 +37,7 @@ export default function SettingsPage() {
     })
     if (res.ok) {
       await supabase.auth.signOut()
-      router.push('/login')
-      router.refresh()
+      window.location.href = '/login'
     } else {
       const data = await res.json().catch(() => null)
       setDeleting(false)
