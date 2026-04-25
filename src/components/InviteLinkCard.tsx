@@ -32,7 +32,7 @@ export default function InviteLinkCard({ username, className = '' }: { username:
       {copied ? <Check size={16} className="text-accent flex-shrink-0" /> : <Link2 size={16} className="text-text-muted flex-shrink-0" />}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Your invite link{copied ? ' · Copied!' : ''}</p>
-        <p className="text-[13px] font-mono truncate">{origin.replace(/^https?:\/\//, '')}/join/{username}</p>
+        <p className="text-[13px] truncate">{origin.replace(/^https?:\/\//, '')}/join/{username}</p>
       </div>
     </button>
   )
