@@ -112,7 +112,7 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
                     {canDelete && (
                       <button
                         onClick={() => { setShowMenu(false); setShowDeleteConfirm(true) }}
-                        className="press block w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-bg-input"
+                        className="press block w-full text-left px-4 py-2.5 text-[13px] text-text-muted hover:text-text hover:bg-bg-input"
                       >
                         Delete
                       </button>
@@ -124,7 +124,7 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
           )}
           {showDeleteConfirm && (
             <div className="flex items-center gap-1.5">
-              <button onClick={handleDelete} className="press text-red-500 text-[11px] font-medium">Delete</button>
+              <button onClick={handleDelete} className="press text-text text-[11px] font-medium">Delete</button>
               <button onClick={() => setShowDeleteConfirm(false)} className="press text-text-muted text-[11px] font-medium">Cancel</button>
             </div>
           )}

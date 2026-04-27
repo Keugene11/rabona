@@ -70,7 +70,7 @@ export default function ProfilePage() {
 
   const SAFE_FIELDS = new Set([
     'full_name', 'about_me', 'major', 'university',
-    'hometown', 'high_school', 'birthday', 'class_year', 'gender',
+    'hometown', 'high_school', 'birthday', 'age', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
     'favorite_quotes',
@@ -151,6 +151,7 @@ export default function ProfilePage() {
       hometown: { label: 'Hometown', type: 'text' },
       high_school: { label: 'High School', type: 'text' },
       birthday: { label: 'Birthday', type: 'birthday' },
+      age: { label: 'Age', type: 'number' },
       class_year: { label: 'Class Year', type: 'select', options: CLASS_YEARS.map(y => ({ value: y.toString(), label: y.toString() })) },
       gender: { label: 'Gender', type: 'select', options: GENDERS.map(g => ({ value: g, label: g })) },
       relationship_status: { label: 'Relationship Status', type: 'select', options: RELATIONSHIP_STATUSES.map(s => ({ value: s, label: s })) },
@@ -184,7 +185,12 @@ export default function ProfilePage() {
     })
 
     function save(val?: string) {
-      const v = val !== undefined ? val : localValue
+      const raw = val !== undefined ? val : localValue
+      let v: string | number | null = raw
+      if (type === 'number') {
+        if (raw === '' || raw === 'None') v = null
+        else { const n = parseInt(raw, 10); v = isNaN(n) ? null : n }
+      }
       updateField(field, v)
       setEditing(null)
     }
@@ -387,7 +393,7 @@ export default function ProfilePage() {
             <h1 className="text-[20px] font-bold tracking-tight truncate">{profile.full_name || 'Set your name'}</h1>
             {profile.username && <p className="text-[13px] text-text-muted truncate">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted truncate">
-              {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
+              {[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ') || 'Add your age'}
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -418,10 +424,14 @@ export default function ProfilePage() {
 
           {/* Name & subtitle — desktop only; mobile uses the compact header above */}
           <div className="hidden md:block">
-            <h1 className="text-[22px] font-bold tracking-tight cursor-pointer hover:underline" onClick={() => setEditing('full_name')}>{profile.full_name || 'Click to set name'}</h1>
+            <h1 className="text-[22px] font-bold tracking-tight">
+              <button type="button" onClick={() => setEditing('full_name')} className="press cursor-pointer hover:underline text-left">
+                {profile.full_name || 'Click to set name'}
+              </button>
+            </h1>
             {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
             <p className="text-[13px] text-text-muted mt-0.5">
-              {profile.major || 'No major'}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}
+              {[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ') || 'Add your age'}
             </p>
             <div className="flex items-center gap-3 mt-2">
               <Link href="/settings" className="press p-2 text-text-muted hover:text-text"><Settings size={18} /></Link>
@@ -488,6 +498,7 @@ export default function ProfilePage() {
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-2.5">
             <EditableRow icon={Home} label="From" field="hometown" value={profile.hometown} />
             <EditableRow icon={School} label="High School" field="high_school" value={profile.high_school} />
+            <EditableRow icon={Cake} label="Age" field="age" value={profile.age?.toString()} type="number" />
             <EditableRow icon={Cake} label="Birthday" field="birthday" value={profile.birthday} type="birthday" />
             <EditableRow icon={GraduationCap} label="Gender" field="gender" value={profile.gender} options={GENDERS.map(g => ({ value: g, label: g }))} />
             <EditableRow icon={Heart} label="Status" field="relationship_status" value={profile.relationship_status} options={RELATIONSHIP_STATUSES.map(s => ({ value: s, label: s }))} />

@@ -227,7 +227,7 @@ export default function FriendsPage() {
           </button>
         </div>
         {addStatus.message && (
-          <p className={`text-[12px] mt-2 ${addStatus.kind === 'ok' ? 'text-green-600' : 'text-red-500'}`}>
+          <p className={`text-[12px] mt-2 ${addStatus.kind === 'ok' ? 'text-text' : 'text-text-muted'}`}>
             {addStatus.message}
           </p>
         )}

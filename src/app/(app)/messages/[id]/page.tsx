@@ -329,13 +329,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                       className="press p-0.5"
                       aria-label="Like message"
                     >
-                      <Heart size={13} className={iLiked ? 'fill-red-500 text-red-500' : 'text-text-muted hover:text-text'} />
+                      <Heart size={13} className={iLiked ? 'fill-text text-text' : 'text-text-muted hover:text-text'} />
                     </button>
                   </div>
                   {/* Like count bubble */}
                   {msgLikeCount > 0 && (
                     <div className={`absolute -bottom-2.5 ${isMine ? 'left-1' : 'right-1'} bg-bg-card border border-border rounded-full px-1.5 py-0.5 flex items-center gap-0.5`}>
-                      <Heart size={10} className="text-red-500 fill-red-500" />
+                      <Heart size={10} className="text-text fill-text" />
                       {msgLikeCount > 1 && <span className="text-[9px] text-text-muted">{msgLikeCount}</span>}
                     </div>
                   )}

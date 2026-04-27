@@ -431,8 +431,8 @@ function CommentItem({ comment, userId, onDelete, onReply, liked, likeCount, onT
             className="press flex items-center gap-1 px-2 py-1.5 rounded-full hover:bg-bg-input"
             aria-label="Like"
           >
-            <Heart size={14} className={liked ? 'fill-red-500 text-red-500' : 'text-text-muted'} />
-            {likeCount > 0 && <span className={`text-[11px] ${liked ? 'text-red-500' : 'text-text-muted'}`}>{likeCount}</span>}
+            <Heart size={14} className={liked ? 'fill-text text-text' : 'text-text-muted'} />
+            {likeCount > 0 && <span className={`text-[11px] ${liked ? 'text-text' : 'text-text-muted'}`}>{likeCount}</span>}
           </button>
           {onReply && (
             <button
@@ -464,7 +464,7 @@ function CommentItem({ comment, userId, onDelete, onReply, liked, likeCount, onT
                     </button>
                     <button
                       onClick={() => { setShowMenu(false); setConfirmDelete(true) }}
-                      className="press block w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-bg-input"
+                      className="press block w-full text-left px-4 py-2.5 text-[13px] text-text-muted hover:text-text hover:bg-bg-input"
                     >
                       Delete
                     </button>
@@ -475,7 +475,7 @@ function CommentItem({ comment, userId, onDelete, onReply, liked, likeCount, onT
           )}
           {confirmDelete && (
             <div className="flex items-center gap-2 px-2">
-              <button onClick={() => onDelete(comment.id)} className="press text-[12px] text-red-500 font-medium">Delete</button>
+              <button onClick={() => onDelete(comment.id)} className="press text-[12px] text-text font-medium">Delete</button>
               <button onClick={() => setConfirmDelete(false)} className="press text-[12px] text-text-muted font-medium">Cancel</button>
             </div>
           )}

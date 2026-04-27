@@ -356,9 +356,9 @@ function UsernameField({ userId, initial, lastChangedAt, onChange }: {
   const inputClass = 'w-full bg-bg-card border border-border rounded-xl pl-8 pr-3 py-2 text-[14px] outline-none focus:border-text-muted transition-colors'
   const labelClass = 'text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1 block'
   const color = status === 'taken' || status === 'invalid' || status === 'error'
-    ? 'text-red-500'
+    ? 'text-text'
     : status === 'available' || status === 'saved'
-    ? 'text-green-600'
+    ? 'text-text'
     : 'text-text-muted'
 
   return (

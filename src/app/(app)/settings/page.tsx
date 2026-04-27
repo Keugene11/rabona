@@ -102,14 +102,14 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="bg-bg-card border border-red-500/20 rounded-2xl px-4 py-4">
-        <p className="text-[14px] font-medium text-red-500 mb-1">Delete Account</p>
+      <div className="bg-bg-card border border-border rounded-2xl px-4 py-4">
+        <p className="text-[14px] font-medium text-text mb-1">Delete Account</p>
         <p className="text-[12px] text-text-muted mb-3">Permanently delete your account and all associated data. This action cannot be undone.</p>
 
         {!confirmDelete ? (
           <button
             onClick={() => setConfirmDelete(true)}
-            className="press flex items-center gap-2 text-[13px] font-medium text-red-500 border border-red-500/20 rounded-xl px-4 py-2"
+            className="press flex items-center gap-2 text-[13px] font-medium text-text border border-border rounded-xl px-4 py-2"
           >
             <Trash2 size={14} />
             Delete my account
@@ -122,7 +122,7 @@ export default function SettingsPage() {
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder="your email"
-              className="bg-bg-input rounded-lg px-3 py-2 text-[13px] outline-none w-full border border-border focus:border-red-500"
+              className="bg-bg-input rounded-lg px-3 py-2 text-[13px] outline-none w-full border border-border focus:border-text-muted"
               autoFocus
             />
             <div className="flex gap-2">
@@ -135,7 +135,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleDelete}
                 disabled={!email || confirmText.trim().toLowerCase() !== email.toLowerCase() || deleting}
-                className="press flex items-center gap-2 text-[13px] font-medium text-white bg-red-500 rounded-xl px-4 py-2 disabled:opacity-40"
+                className="press flex items-center gap-2 text-[13px] font-medium text-bg bg-text rounded-xl px-4 py-2 disabled:opacity-40"
               >
                 {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 {deleting ? 'Deleting...' : 'Confirm Delete'}

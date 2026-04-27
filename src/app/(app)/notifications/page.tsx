@@ -204,7 +204,7 @@ export default function NotificationsPage() {
   }
 
   function getNotifIcon(type: string) {
-    if (type === 'like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'like') return <Heart size={12} className="text-text fill-text flex-shrink-0" />
     if (type === 'comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'reply') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'follow') return <UserPlus size={12} className="text-accent flex-shrink-0" />
@@ -214,9 +214,9 @@ export default function NotificationsPage() {
     if (type === 'poke') return <Hand size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_post') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
     if (type === 'friend_comment') return <MessageSquare size={12} className="text-accent flex-shrink-0" />
-    if (type === 'friend_like') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
-    if (type === 'like_comment') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
-    if (type === 'friend_like_comment') return <Heart size={12} className="text-red-500 fill-red-500 flex-shrink-0" />
+    if (type === 'friend_like') return <Heart size={12} className="text-text fill-text flex-shrink-0" />
+    if (type === 'like_comment') return <Heart size={12} className="text-text fill-text flex-shrink-0" />
+    if (type === 'friend_like_comment') return <Heart size={12} className="text-text fill-text flex-shrink-0" />
     if (type === 'mention') return <AtSign size={12} className="text-accent flex-shrink-0" />
     return null
   }

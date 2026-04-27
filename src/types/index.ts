@@ -5,6 +5,7 @@ export interface Profile {
   username: string
   avatar_url: string | null
   class_year: number | null
+  age: number | null
   major: string
   gender: string
   relationship_status: string

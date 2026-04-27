@@ -116,13 +116,13 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
               </button>
             )}
             {canDelete && !showDeleteConfirm && (
-              <button onClick={() => setShowDeleteConfirm(true)} className="press text-text-muted hover:text-red-500 p-1.5">
+              <button onClick={() => setShowDeleteConfirm(true)} className="press text-text-muted hover:text-text p-1.5">
                 <Trash2 size={15} />
               </button>
             )}
             {showDeleteConfirm && (
               <div className="flex items-center gap-1.5">
-                <button onClick={handleDelete} className="press text-red-500 text-[12px] font-medium">Delete</button>
+                <button onClick={handleDelete} className="press text-text text-[12px] font-medium">Delete</button>
                 <button onClick={() => setShowDeleteConfirm(false)} className="press text-text-muted text-[12px] font-medium">Cancel</button>
               </div>
             )}

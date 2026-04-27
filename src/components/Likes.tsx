@@ -80,8 +80,8 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
 
   return (
     <button onClick={toggle} className="flex items-center gap-1 text-[11px] press">
-      <Heart size={13} className={liked ? 'fill-red-500 text-red-500' : 'text-text-muted'} />
-      <span className={liked ? 'text-red-500' : 'text-text-muted'}>{count > 0 ? count : ''}</span>
+      <Heart size={13} className={liked ? 'fill-text text-text' : 'text-text-muted'} />
+      <span className={liked ? 'text-text' : 'text-text-muted'}>{count > 0 ? count : ''}</span>
     </button>
   )
 }

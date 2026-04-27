@@ -240,7 +240,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
                   <button
                     onClick={submitReport}
                     disabled={!reportReason}
-                    className="press flex-1 py-2 rounded-xl text-[13px] font-medium bg-red-500 text-white disabled:opacity-40"
+                    className="press flex-1 py-2 rounded-xl text-[13px] font-medium bg-text text-bg disabled:opacity-40"
                   >
                     Submit Report
                   </button>
@@ -266,8 +266,10 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           <div className="min-w-0">
             <h1 className="text-[16px] font-bold tracking-tight truncate">{profile.full_name}</h1>
             {profile.username && <p className="text-[12px] text-text-muted truncate">@{profile.username}</p>}
-            {profile.major && (
-              <p className="text-[12px] text-text-muted truncate">{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>
+            {(profile.age || profile.class_year) && (
+              <p className="text-[12px] text-text-muted truncate">
+                {[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ')}
+              </p>
             )}
           </div>
         </div>
@@ -300,7 +302,9 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             <h1 className="text-[22px] font-bold tracking-tight">{profile.full_name}</h1>
             {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
             <div className="text-[13px] text-text-muted space-y-0.5 mt-0.5">
-              {profile.major && <p>{profile.major}{profile.class_year ? ` '${profile.class_year.toString().slice(-2)}` : ''}</p>}
+              {(profile.age || profile.class_year) && (
+                <p>{[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ')}</p>
+              )}
               {profile.last_seen && (
                 <p className="flex items-center gap-1">
                   <Clock size={12} /> {getLastSeen(profile.last_seen)}
@@ -349,7 +353,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
             <div className="flex gap-2 mb-4">
               <button
                 onClick={toggleBlock}
-                className={`press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border ${isBlocked ? 'border-red-500/30 text-red-500' : 'border-border text-text-muted hover:text-text'}`}
+                className={`press flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[12px] font-medium border ${isBlocked ? 'border-text/40 text-text' : 'border-border text-text-muted hover:text-text'}`}
               >
                 <Ban size={13} />
                 {isBlocked ? 'Unblock' : 'Block'}
@@ -397,7 +401,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
           {/* Blocked state */}
           {isBlocked && (
-            <div className="bg-bg-card border border-red-500/20 rounded-2xl px-4 py-3 mb-3 text-center">
+            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 text-center">
               <p className="text-[13px] text-text-muted">You have blocked this user.</p>
             </div>
           )}
@@ -449,10 +453,11 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           )}
 
           {/* Personal */}
-          {(show('hometown', profile.hometown) || show('high_school', profile.high_school) || show('birthday', profile.birthday) || (show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say') || (show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say') || show('looking_for', profile.looking_for) || show('political_views', profile.political_views)) && (
+          {(show('hometown', profile.hometown) || show('high_school', profile.high_school) || (show('age', profile.age?.toString()) && profile.age) || show('birthday', profile.birthday) || (show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say') || (show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say') || show('looking_for', profile.looking_for) || show('political_views', profile.political_views)) && (
           <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-0.5">
             {show('hometown', profile.hometown) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Home size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">From:</span> <span>{profile.hometown}</span></div>}
             {show('high_school', profile.high_school) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.high_school}</span></div>}
+            {show('age', profile.age?.toString()) && profile.age && <div className="flex items-center gap-2 text-[13px] py-0.5"><Cake size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Age:</span> <span>{profile.age}</span></div>}
             {show('birthday', profile.birthday) && !isNaN(new Date(profile.birthday + 'T00:00:00').getTime()) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Cake size={13} className="text-text-muted flex-shrink-0" /><span>{new Date(profile.birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</span></div>}
             {show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span>{profile.relationship_status}</span></div>}
             {show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Interested in:</span> <span>{profile.interested_in}</span></div>}
