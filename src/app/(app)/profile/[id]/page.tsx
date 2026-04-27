@@ -2,11 +2,10 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, MapPin, BookOpen, GraduationCap, Heart, MessageCircle, Clock, Home, School, Cake, Phone, Globe, Mail, Eye, Ban, Flag } from 'lucide-react'
+import { Loader2, MessageCircle, Clock, Eye, Ban, Flag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, WallPost } from '@/types'
-import { EMAIL_HIDDEN_FROM_OTHERS } from '@/lib/constants'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import FriendButton from '@/components/FriendButton'
 import PokeButton from '@/components/PokeButton'
@@ -192,16 +191,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     )
   }
 
-  const privateFields = profile.private_fields ? profile.private_fields.split(',').filter(Boolean) : []
   const isOwn = currentUserId === id
-  const show = (field: string, value: string | null | undefined) => {
-    if (isOwn) return true
-    if (!value || value === 'None') return false
-    if (field === 'email' && EMAIL_HIDDEN_FROM_OTHERS.includes(value)) return false
-    if (privateFields.includes(field)) return false
-    if (privateFields.includes(`${field}:followers`)) return isFriend
-    return true
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-28">
@@ -266,11 +256,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           <div className="min-w-0">
             <h1 className="text-[16px] font-bold tracking-tight truncate">{profile.full_name}</h1>
             {profile.username && <p className="text-[12px] text-text-muted truncate">@{profile.username}</p>}
-            {(profile.age || profile.class_year) && (
-              <p className="text-[12px] text-text-muted truncate">
-                {[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ')}
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -297,20 +282,15 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
         {/* LEFT COLUMN — Profile info */}
         <div className={`md:w-[340px] md:flex-shrink-0 md:sticky md:top-4 ${activeTab === 'info' ? 'block' : 'hidden'} md:block`}>
 
-          {/* Name & subtitle */}
+          {/* Name */}
           <div className="mb-3">
             <h1 className="text-[22px] font-bold tracking-tight">{profile.full_name}</h1>
             {profile.username && <p className="text-[13px] text-text-muted mt-0.5">@{profile.username}</p>}
-            <div className="text-[13px] text-text-muted space-y-0.5 mt-0.5">
-              {(profile.age || profile.class_year) && (
-                <p>{[profile.age ? `${profile.age}` : null, profile.class_year ? `'${profile.class_year.toString().slice(-2)}` : null].filter(Boolean).join(' · ')}</p>
-              )}
-              {profile.last_seen && (
-                <p className="flex items-center gap-1">
-                  <Clock size={12} /> {getLastSeen(profile.last_seen)}
-                </p>
-              )}
-            </div>
+            {profile.last_seen && (
+              <p className="text-[13px] text-text-muted mt-0.5 flex items-center gap-1">
+                <Clock size={12} /> {getLastSeen(profile.last_seen)}
+              </p>
+            )}
           </div>
 
           {/* Avatar */}
@@ -437,51 +417,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
                   </Link>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Academics */}
-          {(show('university', profile.university) || show('major', profile.major) || profile.class_year) && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3">
-              <p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-1.5">Academics</p>
-              <div className="space-y-0.5">
-                {show('university', profile.university) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.university}</span></div>}
-                {show('major', profile.major) && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span>{profile.major}</span></div>}
-                {profile.class_year && <div className="flex items-center gap-2 text-[13px] py-0.5"><GraduationCap size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Class of</span> <span>{profile.class_year}</span></div>}
-              </div>
-            </div>
-          )}
-
-          {/* Personal */}
-          {(show('hometown', profile.hometown) || show('high_school', profile.high_school) || (show('age', profile.age?.toString()) && profile.age) || show('birthday', profile.birthday) || (show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say') || (show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say') || show('looking_for', profile.looking_for) || show('political_views', profile.political_views)) && (
-          <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-0.5">
-            {show('hometown', profile.hometown) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Home size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">From:</span> <span>{profile.hometown}</span></div>}
-            {show('high_school', profile.high_school) && <div className="flex items-center gap-2 text-[13px] py-0.5"><School size={13} className="text-text-muted flex-shrink-0" /><span>{profile.high_school}</span></div>}
-            {show('age', profile.age?.toString()) && profile.age && <div className="flex items-center gap-2 text-[13px] py-0.5"><Cake size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Age:</span> <span>{profile.age}</span></div>}
-            {show('birthday', profile.birthday) && !isNaN(new Date(profile.birthday + 'T00:00:00').getTime()) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Cake size={13} className="text-text-muted flex-shrink-0" /><span>{new Date(profile.birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</span></div>}
-            {show('relationship_status', profile.relationship_status) && profile.relationship_status !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span>{profile.relationship_status}</span></div>}
-            {show('interested_in', profile.interested_in) && profile.interested_in !== 'Prefer not to say' && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Interested in:</span> <span>{profile.interested_in}</span></div>}
-            {show('looking_for', profile.looking_for) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Heart size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Looking for:</span> <span>{profile.looking_for}</span></div>}
-            {show('political_views', profile.political_views) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Globe size={13} className="text-text-muted flex-shrink-0" /><span className="text-text-muted">Political Views:</span> <span>{profile.political_views}</span></div>}
-          </div>
-          )}
-
-          {/* Contact */}
-          {(show('email', profile.email) || show('phone', profile.phone) || show('websites', profile.websites)) && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-0.5">
-              {show('email', profile.email) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Mail size={13} className="text-text-muted flex-shrink-0" /><span className="text-accent break-all">{profile.email}</span></div>}
-              {show('phone', profile.phone) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Phone size={13} className="text-text-muted flex-shrink-0" /><span>{profile.phone}</span></div>}
-              {show('websites', profile.websites) && <div className="flex items-center gap-2 text-[13px] py-0.5"><Globe size={13} className="text-text-muted flex-shrink-0" /><span className="text-accent break-all">{profile.websites}</span></div>}
-            </div>
-          )}
-
-          {/* Favorites */}
-          {(profile.favorite_music || profile.favorite_movies || profile.interests || profile.favorite_quotes) && (
-            <div className="bg-bg-card border border-border rounded-2xl px-4 py-3 mb-3 space-y-2">
-              {profile.interests && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Interests</p><p className="text-[13px]">{profile.interests}</p></div>}
-              {profile.favorite_music && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Music</p><p className="text-[13px]">{profile.favorite_music}</p></div>}
-              {profile.favorite_movies && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Favorite Movies</p><p className="text-[13px]">{profile.favorite_movies}</p></div>}
-              {profile.favorite_quotes && <div><p className="text-[11px] text-text-muted uppercase tracking-wide font-medium mb-0.5">Quotes</p><p className="text-[13px] italic">&ldquo;{profile.favorite_quotes}&rdquo;</p></div>}
             </div>
           )}
 
