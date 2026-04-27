@@ -490,44 +490,37 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
 
         {/* RIGHT COLUMN — The Wall */}
         <div className={`flex-1 min-w-0 ${activeTab === 'wall' ? 'block' : 'hidden'} md:block`}>
-        {currentUserId && !isBlocked && (() => {
-          const wallSetting = profile.wall_posts_from || 'everyone'
-          const canPost = currentUserId === id || wallSetting === 'everyone' || (wallSetting === 'friends' && isFriend)
-          if (canPost) {
-            return (
+        {!isOwn && !isFriend ? (
+          <div className="bg-bg-card border border-border rounded-2xl p-6 text-center mt-3">
+            <p className="text-text-muted text-[14px]">Become friends with {profile.full_name?.split(' ')[0]} to see their wall.</p>
+          </div>
+        ) : (
+          <>
+            {currentUserId && !isBlocked && (
               <WallPostForm
                 wallOwnerId={id}
                 onPost={(post) => setWallPosts([post, ...wallPosts])}
               />
-            )
-          }
-          if (currentUserId !== id) {
-            return (
-              <div className="bg-bg-card border border-border rounded-2xl p-4 text-center mt-0 mb-3">
-                <p className="text-text-muted text-[13px]">Only friends can write on {profile.full_name?.split(' ')[0]}&apos;s wall.</p>
+            )}
+            {wallPosts.length === 0 ? (
+              <div className="bg-bg-card border border-border rounded-2xl p-6 text-center mt-3">
+                <p className="text-text-muted text-[14px]">No wall posts yet.</p>
               </div>
-            )
-          }
-          return null
-        })()}
-
-        {wallPosts.length === 0 ? (
-          <div className="bg-bg-card border border-border rounded-2xl p-6 text-center mt-3">
-            <p className="text-text-muted text-[14px]">No wall posts yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3 mt-3">
-            {wallPosts.map(post => (
-              <WallPostItem
-                key={post.id}
-                post={post}
-                currentUserId={currentUserId}
-                wallOwnerId={id}
-                isFriend={true}
-                onDelete={(postId) => setWallPosts(wallPosts.filter(p => p.id !== postId))}
-              />
-            ))}
-          </div>
+            ) : (
+              <div className="space-y-3 mt-3">
+                {wallPosts.map(post => (
+                  <WallPostItem
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUserId}
+                    wallOwnerId={id}
+                    isFriend={true}
+                    onDelete={(postId) => setWallPosts(wallPosts.filter(p => p.id !== postId))}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
         </div>
       </div>
