@@ -116,7 +116,7 @@ export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }
           onKeyDown={mention.onKeyDown}
           maxLength={2000}
           placeholder={isModal ? "What's on your mind?" : 'Write on the wall...'}
-          className={`w-full bg-transparent placeholder:text-text-muted/50 outline-none resize-none overflow-hidden ${isModal ? 'text-[16px] leading-[1.5] min-h-[200px]' : 'text-[14px] min-h-[4rem]'}`}
+          className={`w-full bg-transparent placeholder:text-text-muted/50 outline-none resize-none overflow-hidden ${isModal ? 'text-[16px] leading-[1.5] min-h-[200px]' : 'text-[15px] leading-[1.45] min-h-[4rem]'}`}
         />
         <MentionDropdown
           suggestions={mention.suggestions}

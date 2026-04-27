@@ -33,7 +33,8 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
-  const shouldTruncate = truncate && content.length > TRUNCATE_LENGTH
+  const [expanded, setExpanded] = useState(false)
+  const shouldTruncate = truncate && content.length > TRUNCATE_LENGTH && !expanded
   const displayContent = shouldTruncate ? content.slice(0, TRUNCATE_LENGTH).trimEnd() + '…' : content
 
   function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -133,7 +134,15 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
       {content && (
         <p className="text-[15px] mt-2.5 whitespace-pre-wrap">
           <MentionText text={displayContent} />
-          {shouldTruncate && <span className="text-accent font-medium ml-1">more</span>}
+          {shouldTruncate && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+              className="press text-text font-semibold ml-1 hover:underline"
+            >
+              more
+            </button>
+          )}
         </p>
       )}
       {post.media_url && (
