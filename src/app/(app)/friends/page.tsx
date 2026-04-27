@@ -205,6 +205,9 @@ export default function FriendsPage() {
 
       {/* Add friend by @handle */}
       <form onSubmit={addFriend} className="mb-4">
+        {self?.username && (
+          <p className="text-[11px] text-text-muted mb-1.5 px-1">You are <span className="text-text font-semibold">@{self.username}</span></p>
+        )}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[14px]">@</span>
