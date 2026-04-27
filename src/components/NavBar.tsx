@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Plus } from 'lucide-react'
 import {
   HomeIcon as HomeOutline,
   MagnifyingGlassIcon as SearchOutline,
@@ -66,6 +67,17 @@ export default function NavBar() {
 
   return (
     <>
+      {/* Mobile compose FAB */}
+      <button
+        type="button"
+        onClick={() => setComposeOpen(true)}
+        aria-label="New post"
+        className="lg:hidden fixed right-4 z-50 w-14 h-14 rounded-full bg-accent text-white shadow-lg flex items-center justify-center press"
+        style={{ bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)' }}
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
       {/* Mobile bottom nav */}
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-card/95 backdrop-blur-lg border-t border-border z-50"

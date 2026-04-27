@@ -16,7 +16,11 @@ interface WallPostFormProps {
 
 export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }: WallPostFormProps) {
   const supabase = createClient()
-  const [content, setContent] = useState('')
+  const draftKey = `rabona:draft:${variant}:${wallOwnerId}`
+  const [content, setContent] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(draftKey) || '' } catch { return '' }
+  })
   const [loading, setLoading] = useState(false)
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
@@ -35,6 +39,15 @@ export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }
     ta.style.height = 'auto'
     ta.style.height = ta.scrollHeight + 'px'
   }, [content])
+
+  // Autosave draft to localStorage on every keystroke; clear on successful post.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (content) localStorage.setItem(draftKey, content)
+      else localStorage.removeItem(draftKey)
+    } catch {}
+  }, [content, draftKey])
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
