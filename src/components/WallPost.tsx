@@ -11,7 +11,7 @@ import Impressions from '@/components/Impressions'
 import Likes from '@/components/Likes'
 import MentionText from '@/components/MentionText'
 
-const TRUNCATE_LENGTH = 280
+const TRUNCATE_LENGTH = 600
 
 interface WallPostItemProps {
   post: WallPost
