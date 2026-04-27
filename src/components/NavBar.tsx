@@ -100,6 +100,9 @@ export default function NavBar() {
 
       {/* Desktop left sidebar */}
       <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-56 flex-col py-6 px-3 gap-3 bg-bg z-40">
+        <Link href="/feed" className="press px-3 mb-2 text-[22px] font-extrabold tracking-tight">
+          [ Rabona ]
+        </Link>
         {navItems.map(({ href, outline: Outline, solid: Solid, label, hasBadge }) => {
           const isActive = pathname.startsWith(href)
           const Icon = isActive ? Solid : Outline

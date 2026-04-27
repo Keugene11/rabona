@@ -141,7 +141,8 @@ export default function FeedPage() {
   return (
     <div className="max-w-xl mx-auto px-4 pt-6 pb-28">
       <div className="mb-4">
-        <h1 className="text-[24px] font-bold tracking-tight">Home</h1>
+        <p className="text-[20px] font-extrabold tracking-tight lg:hidden">[ Rabona ]</p>
+        <h1 className="text-[24px] font-bold tracking-tight mt-2 lg:mt-0">Home</h1>
         <div className="accent-bar" />
         <p className="text-[13px] text-text-muted mt-2">Posts from you and your friends.</p>
       </div>
