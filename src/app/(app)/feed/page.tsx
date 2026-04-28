@@ -190,22 +190,13 @@ export default function FeedPage() {
         <div className="bg-bg-card border border-border rounded-2xl p-5 mb-4">
           <h2 className="text-[18px] font-bold">Welcome to Rabona</h2>
           <p className="text-[13px] text-text-muted mt-1">Sign in to post, like, and connect with friends.</p>
-          <div className="flex gap-2 mt-4">
-            <button
-              type="button"
-              onClick={openSignIn}
-              className="press flex-1 bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl"
-            >
-              Sign in to post
-            </button>
-            <button
-              type="button"
-              onClick={openSignIn}
-              className="press flex-1 bg-bg-input border border-border text-text text-center font-semibold text-[14px] py-3 rounded-xl"
-            >
-              Invite friends
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openSignIn}
+            className="press w-full bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl mt-4"
+          >
+            Sign in to post
+          </button>
         </div>
       )}
 
