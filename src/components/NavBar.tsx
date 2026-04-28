@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { createClient } from '@/lib/supabase/client'
 import ComposeModal from '@/components/ComposeModal'
+import { useSignIn } from '@/components/SignInModal'
 
 type NavItem = {
   href: string
@@ -43,6 +44,7 @@ const navItemsSignedOut: NavItem[] = [
 
 export default function NavBar() {
   const pathname = usePathname()
+  const { open: openSignIn } = useSignIn()
   const [badgeCount, setBadgeCount] = useState(0)
   const [composeOpen, setComposeOpen] = useState(false)
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
@@ -108,14 +110,15 @@ export default function NavBar() {
           <Plus size={24} strokeWidth={2.5} />
         </button>
       ) : signedIn === false ? (
-        <Link
-          href="/login?returnTo=/feed"
+        <button
+          type="button"
+          onClick={openSignIn}
           aria-label="Sign in"
           className="lg:hidden fixed right-4 z-50 px-5 h-12 rounded-full bg-accent text-white shadow-lg flex items-center justify-center font-semibold text-[14px] press"
           style={{ bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)' }}
         >
           Sign in
-        </Link>
+        </button>
       ) : null}
 
       {/* Mobile bottom nav */}
@@ -186,12 +189,13 @@ export default function NavBar() {
             Post
           </button>
         ) : signedIn === false ? (
-          <Link
-            href="/login?returnTo=/feed"
+          <button
+            type="button"
+            onClick={openSignIn}
             className="press mt-6 w-full bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl hover:bg-accent-dark transition-colors cursor-pointer"
           >
             Sign in
-          </Link>
+          </button>
         ) : null}
       </aside>
 

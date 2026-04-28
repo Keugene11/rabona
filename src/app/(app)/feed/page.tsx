@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 import type { WallPost } from '@/types'
@@ -12,10 +11,12 @@ import InviteLinkCard from '@/components/InviteLinkCard'
 import { readPendingPost, clearPendingPost } from '@/lib/pending-post'
 import { notifyFriends } from '@/lib/notifyFriends'
 import { notifyMentions } from '@/components/MentionAutocomplete'
+import { useSignIn } from '@/components/SignInModal'
 
 
 export default function FeedPage() {
   const supabase = createClient()
+  const { open: openSignIn } = useSignIn()
   const [posts, setPosts] = useState<WallPost[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -190,18 +191,20 @@ export default function FeedPage() {
           <h2 className="text-[18px] font-bold">Welcome to Rabona</h2>
           <p className="text-[13px] text-text-muted mt-1">Sign in to post, like, and connect with friends.</p>
           <div className="flex gap-2 mt-4">
-            <Link
-              href="/login?returnTo=/feed"
+            <button
+              type="button"
+              onClick={openSignIn}
               className="press flex-1 bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl"
             >
               Sign in to post
-            </Link>
-            <Link
-              href="/login?returnTo=/feed"
+            </button>
+            <button
+              type="button"
+              onClick={openSignIn}
               className="press flex-1 bg-bg-input border border-border text-text text-center font-semibold text-[14px] py-3 rounded-xl"
             >
               Invite friends
-            </Link>
+            </button>
           </div>
         </div>
       )}
