@@ -162,10 +162,10 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
           )}
         </div>
       )}
-      <div className="flex items-center gap-5 mt-3 pt-2.5 border-t border-border">
-        <span className="flex items-center gap-1 text-[11px] text-text-muted">
-          <MessageCircle size={13} />
-          {commentCount > 0 ? commentCount : ''}
+      <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border -mx-1">
+        <span className="press flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] text-text-muted hover:bg-bg-input">
+          <MessageCircle size={18} strokeWidth={1.75} />
+          {commentCount > 0 ? <span>{commentCount}</span> : null}
         </span>
         <Likes postType="wall_post" postId={post.id} userId={currentUserId} authorId={post.author_id} />
         <Impressions postType="wall_post" postId={post.id} userId={currentUserId} />

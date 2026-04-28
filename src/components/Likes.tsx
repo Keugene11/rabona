@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Heart } from 'lucide-react'
 import { notifyFriends } from '@/lib/notifyFriends'
@@ -16,6 +16,8 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
   const supabase = createClient()
   const [liked, setLiked] = useState(false)
   const [count, setCount] = useState(0)
+  const [pop, setPop] = useState(false)
+  const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!userId) return
@@ -34,8 +36,14 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId, userId])
 
-  async function toggle() {
+  async function toggle(e: React.MouseEvent) {
+    e.stopPropagation()
     if (!userId) return
+    if (!liked) {
+      setPop(true)
+      if (popTimer.current) clearTimeout(popTimer.current)
+      popTimer.current = setTimeout(() => setPop(false), 320)
+    }
     if (liked) {
       await supabase.from('post_likes').delete()
         .eq('post_type', postType)
@@ -79,9 +87,18 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
   }
 
   return (
-    <button onClick={toggle} className="flex items-center gap-1 text-[11px] press">
-      <Heart size={13} className={liked ? 'fill-text text-text' : 'text-text-muted'} />
-      <span className={liked ? 'text-text' : 'text-text-muted'}>{count > 0 ? count : ''}</span>
+    <button
+      onClick={toggle}
+      aria-label="Like"
+      aria-pressed={liked}
+      className={`press flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] transition-colors hover:bg-bg-input ${liked ? 'text-text' : 'text-text-muted'}`}
+    >
+      <Heart
+        size={18}
+        strokeWidth={1.75}
+        className={`transition-transform duration-300 ease-out ${liked ? 'fill-text text-text' : ''} ${pop ? 'scale-125' : 'scale-100'}`}
+      />
+      {count > 0 ? <span className="tabular-nums">{count}</span> : null}
     </button>
   )
 }

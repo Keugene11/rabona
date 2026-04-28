@@ -23,8 +23,9 @@ export default function Impressions({ postType, postId, userId }: { postType: st
   }, [postId, userId])
 
   return (
-    <span className="flex items-center gap-1 text-[11px] text-text-muted">
-      <Eye size={12} />{count}
+    <span className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] text-text-muted">
+      <Eye size={18} strokeWidth={1.75} />
+      <span className="tabular-nums">{count}</span>
     </span>
   )
 }
