@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MoreHorizontal } from 'lucide-react'
+import { MessageCircle, MoreHorizontal } from 'lucide-react'
 import type { WallPost } from '@/types'
 import Comments from '@/components/Comments'
 import Impressions from '@/components/Impressions'
@@ -34,8 +34,18 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
   const shouldTruncate = truncate && content.length > TRUNCATE_LENGTH && !expanded
   const displayContent = shouldTruncate ? content.slice(0, TRUNCATE_LENGTH).trimEnd() + '…' : content
+
+  useEffect(() => {
+    supabase.from('comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_type', 'wall_post')
+      .eq('post_id', post.id)
+      .then(({ count }) => setCommentCount(count || 0))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id])
 
   function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!linkToDetail) return
@@ -87,8 +97,6 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Likes postType="wall_post" postId={post.id} userId={currentUserId} authorId={post.author_id} />
-          <Impressions postType="wall_post" postId={post.id} userId={currentUserId} />
           {(canEdit || canDelete) && !showDeleteConfirm && (
             <div className="relative">
               <button
@@ -154,6 +162,14 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
           )}
         </div>
       )}
+      <div className="flex items-center gap-5 mt-3 pt-2.5 border-t border-border">
+        <span className="flex items-center gap-1 text-[11px] text-text-muted">
+          <MessageCircle size={13} />
+          {commentCount > 0 ? commentCount : ''}
+        </span>
+        <Likes postType="wall_post" postId={post.id} userId={currentUserId} authorId={post.author_id} />
+        <Impressions postType="wall_post" postId={post.id} userId={currentUserId} />
+      </div>
       <Comments postType="wall_post" postId={post.id} postAuthorId={post.author_id} canComment={canComment} />
     </div>
   )
