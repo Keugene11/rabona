@@ -1,10 +1,26 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PREFIXES = ['/login', '/signup', '/auth', '/api', '/about', '/privacy', '/terms', '/join']
+// Routes that genuinely need a signed-in user. Everything else is public:
+// browsing the feed, viewing posts, viewing other profiles, etc.
+const AUTH_REQUIRED_EXACT = new Set([
+  '/profile',
+])
+const AUTH_REQUIRED_PREFIXES = [
+  '/profile/edit',
+  '/settings',
+  '/friends',
+  '/messages',
+  '/notifications',
+  '/pokes',
+]
 
-function isPublic(pathname: string) {
-  return PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
+function requiresAuth(pathname: string) {
+  if (AUTH_REQUIRED_EXACT.has(pathname)) return true
+  if (AUTH_REQUIRED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return true
+  if (/^\/post\/[^/]+\/edit/.test(pathname)) return true
+  if (/^\/comment\/[^/]+\/edit/.test(pathname)) return true
+  return false
 }
 
 // Wipe all sb-* auth cookies on the response so a corrupted session can't
@@ -50,10 +66,12 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // If not logged in and not on auth/public pages, redirect to login
-    if (!user && !isPublic(request.nextUrl.pathname)) {
+    // If not logged in and visiting an auth-required page, redirect to login
+    // (preserving where they were trying to go so we can return them).
+    if (!user && requiresAuth(request.nextUrl.pathname)) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
+      url.searchParams.set('returnTo', request.nextUrl.pathname + request.nextUrl.search)
       return NextResponse.redirect(url)
     }
 
@@ -69,9 +87,9 @@ export async function updateSession(request: NextRequest) {
     }
   } catch (err) {
     console.error('Middleware auth error, clearing cookies:', err)
-    // Stale or malformed auth cookie — wipe it and send the user to /login
-    // (or let public routes through with a clean slate).
-    if (!isPublic(request.nextUrl.pathname)) {
+    // Stale or malformed auth cookie — wipe it and only kick to login if
+    // the route actually needs auth. Public pages should keep working.
+    if (requiresAuth(request.nextUrl.pathname)) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       const redirectResponse = NextResponse.redirect(url)

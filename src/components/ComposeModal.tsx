@@ -27,7 +27,7 @@ export default function ComposeModal({ open, onClose }: ComposeModalProps) {
     if (!open) return
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { setMe(null); return }
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, username, avatar_url')
@@ -76,17 +76,15 @@ export default function ComposeModal({ open, onClose }: ComposeModalProps) {
         )}
 
         <div className="px-5 pb-5 pt-3">
-          {me ? (
-            <WallPostForm
-              wallOwnerId={me.id}
-              variant="modal"
-              onPost={() => {
-                onClose()
-                if (pathname === '/feed' || pathname.startsWith('/profile')) router.refresh()
-                else router.push('/feed')
-              }}
-            />
-          ) : null}
+          <WallPostForm
+            wallOwnerId={me?.id ?? ''}
+            variant="modal"
+            onPost={() => {
+              onClose()
+              if (pathname === '/feed' || pathname.startsWith('/profile')) router.refresh()
+              else router.push('/feed')
+            }}
+          />
         </div>
       </div>
     </div>

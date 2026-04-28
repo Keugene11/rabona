@@ -29,7 +29,7 @@ type NavItem = {
   hasBadge?: boolean
 }
 
-const navItems: NavItem[] = [
+const navItemsSignedIn: NavItem[] = [
   { href: '/feed', outline: HomeOutline, solid: HomeSolid, label: 'Home' },
   { href: '/friends', outline: SearchOutline, solid: SearchSolid, label: 'Friends' },
   { href: '/messages', outline: ChatOutline, solid: ChatSolid, label: 'Messages' },
@@ -37,12 +37,39 @@ const navItems: NavItem[] = [
   { href: '/profile', outline: UserOutline, solid: UserSolid, label: 'Profile' },
 ]
 
+const navItemsSignedOut: NavItem[] = [
+  { href: '/feed', outline: HomeOutline, solid: HomeSolid, label: 'Home' },
+]
+
 export default function NavBar() {
   const pathname = usePathname()
   const [badgeCount, setBadgeCount] = useState(0)
   const [composeOpen, setComposeOpen] = useState(false)
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
+    const supabase = createClient()
+    let active = true
+
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!active) return
+      setSignedIn(!!user)
+    }
+    check()
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return
+      setSignedIn(!!session?.user)
+    })
+    return () => { active = false; sub.subscription.unsubscribe() }
+  }, [])
+
+  useEffect(() => {
+    if (!signedIn) {
+      setBadgeCount(0)
+      return
+    }
     if (pathname === '/notifications') {
       setBadgeCount(0)
       return
@@ -63,20 +90,33 @@ export default function NavBar() {
     loadCount()
     const interval = setInterval(loadCount, 15000)
     return () => clearInterval(interval)
-  }, [pathname])
+  }, [pathname, signedIn])
+
+  const navItems = signedIn ? navItemsSignedIn : navItemsSignedOut
 
   return (
     <>
       {/* Mobile compose FAB */}
-      <button
-        type="button"
-        onClick={() => setComposeOpen(true)}
-        aria-label="New post"
-        className="lg:hidden fixed right-4 z-50 w-14 h-14 rounded-full bg-accent text-white shadow-lg flex items-center justify-center press"
-        style={{ bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)' }}
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
+      {signedIn ? (
+        <button
+          type="button"
+          onClick={() => setComposeOpen(true)}
+          aria-label="New post"
+          className="lg:hidden fixed right-4 z-50 w-14 h-14 rounded-full bg-accent text-white shadow-lg flex items-center justify-center press"
+          style={{ bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)' }}
+        >
+          <Plus size={24} strokeWidth={2.5} />
+        </button>
+      ) : signedIn === false ? (
+        <Link
+          href="/login?returnTo=/feed"
+          aria-label="Sign in"
+          className="lg:hidden fixed right-4 z-50 px-5 h-12 rounded-full bg-accent text-white shadow-lg flex items-center justify-center font-semibold text-[14px] press"
+          style={{ bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)' }}
+        >
+          Sign in
+        </Link>
+      ) : null}
 
       {/* Mobile bottom nav */}
       <nav
@@ -138,12 +178,21 @@ export default function NavBar() {
             </Link>
           )
         })}
-        <button
-          onClick={() => setComposeOpen(true)}
-          className="press mt-6 w-full bg-accent text-white font-semibold text-[14px] py-3 rounded-xl hover:bg-accent-dark transition-colors cursor-pointer"
-        >
-          Post
-        </button>
+        {signedIn ? (
+          <button
+            onClick={() => setComposeOpen(true)}
+            className="press mt-6 w-full bg-accent text-white font-semibold text-[14px] py-3 rounded-xl hover:bg-accent-dark transition-colors cursor-pointer"
+          >
+            Post
+          </button>
+        ) : signedIn === false ? (
+          <Link
+            href="/login?returnTo=/feed"
+            className="press mt-6 w-full bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl hover:bg-accent-dark transition-colors cursor-pointer"
+          >
+            Sign in
+          </Link>
+        ) : null}
       </aside>
 
       <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} />

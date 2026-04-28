@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Loader2, Image, X } from 'lucide-react'
 import type { WallPost } from '@/types'
 import { notifyFriends } from '@/lib/notifyFriends'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import { useMentionAutocomplete, MentionDropdown, notifyMentions } from '@/components/MentionAutocomplete'
+import { writePendingPost } from '@/lib/pending-post'
 
 interface WallPostFormProps {
   wallOwnerId: string
@@ -16,7 +18,8 @@ interface WallPostFormProps {
 
 export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }: WallPostFormProps) {
   const supabase = createClient()
-  const draftKey = `rabona:draft:${variant}:${wallOwnerId}`
+  const router = useRouter()
+  const draftKey = `rabona:draft:${variant}:${wallOwnerId || 'anon'}`
   const [content, setContent] = useState(() => {
     if (typeof window === 'undefined') return ''
     try { return localStorage.getItem(draftKey) || '' } catch { return '' }
@@ -70,7 +73,15 @@ export default function WallPostForm({ wallOwnerId, onPost, variant = 'inline' }
 
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      // Signed-out user: stash the text, send them through login, and let
+      // /feed finish the submission once they're signed in. (Media doesn't
+      // survive a navigation, so we just persist the text.)
+      writePendingPost(content.trim())
+      try { localStorage.removeItem(draftKey) } catch {}
+      router.push('/login?returnTo=/feed')
+      return
+    }
 
     let media_url: string | null = null
     if (mediaFile) {

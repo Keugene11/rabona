@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 import type { WallPost } from '@/types'
@@ -8,6 +9,9 @@ import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import WallPostItem from '@/components/WallPost'
 import WallPostForm from '@/components/WallPostForm'
 import InviteLinkCard from '@/components/InviteLinkCard'
+import { readPendingPost, clearPendingPost } from '@/lib/pending-post'
+import { notifyFriends } from '@/lib/notifyFriends'
+import { notifyMentions } from '@/components/MentionAutocomplete'
 
 
 export default function FeedPage() {
@@ -29,8 +33,42 @@ export default function FeedPage() {
 
   async function loadFeed() {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setPosts([])
+      setHasMore(false)
+      setLoading(false)
+      return
+    }
     setCurrentUserId(user.id)
+
+    // If they came back from login with a draft we stashed before sign-in,
+    // submit it now so the post lands on their wall.
+    const pending = readPendingPost()
+    if (pending && pending.content.trim()) {
+      const { data } = await supabase
+        .from('wall_posts')
+        .insert({
+          author_id: user.id,
+          wall_owner_id: user.id,
+          content: pending.content.trim(),
+          media_url: null,
+        })
+        .select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
+        .single()
+      clearPendingPost()
+      if (data) {
+        setPosts(prev => [data as WallPost, ...prev])
+        const mentionedIds = await notifyMentions(supabase, user.id, pending.content, {
+          post_type: 'wall_post',
+          post_id: (data as WallPost).id,
+        })
+        notifyFriends(supabase, user.id, 'friend_post', {
+          post_type: 'wall_post',
+          post_id: (data as WallPost).id,
+          content: pending.content.slice(0, 100),
+        }, mentionedIds)
+      }
+    }
 
     // Grab the username so we can render the invite link.
     supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
@@ -138,6 +176,8 @@ export default function FeedPage() {
     )
   }
 
+  const signedIn = !!currentUserId
+
   return (
     <div className="max-w-xl mx-auto px-4 pt-6 pb-28">
       <div className="mb-4 lg:hidden">
@@ -145,9 +185,30 @@ export default function FeedPage() {
         <div className="accent-bar" />
       </div>
 
-      <InviteLinkCard username={username} className="mb-4" />
+      {!signedIn && (
+        <div className="bg-bg-card border border-border rounded-2xl p-5 mb-4">
+          <h2 className="text-[18px] font-bold">Welcome to Rabona</h2>
+          <p className="text-[13px] text-text-muted mt-1">Sign in to post, like, and connect with friends.</p>
+          <div className="flex gap-2 mt-4">
+            <Link
+              href="/login?returnTo=/feed"
+              className="press flex-1 bg-accent text-white text-center font-semibold text-[14px] py-3 rounded-xl"
+            >
+              Sign in to post
+            </Link>
+            <Link
+              href="/login?returnTo=/feed"
+              className="press flex-1 bg-bg-input border border-border text-text text-center font-semibold text-[14px] py-3 rounded-xl"
+            >
+              Invite friends
+            </Link>
+          </div>
+        </div>
+      )}
 
-      {/* Compose */}
+      {signedIn && <InviteLinkCard username={username} className="mb-4" />}
+
+      {/* Compose — works for anonymous too; submitting routes through login. */}
       <div className="mb-4">
         <WallPostForm wallOwnerId={currentUserId} onPost={handleNewPost} />
       </div>
@@ -155,7 +216,13 @@ export default function FeedPage() {
       {/* Posts */}
       {posts.length === 0 ? (
         <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
-          <p className="text-[14px] text-text-muted">{friendIds.length === 0 ? 'No friends yet. Share your invite link from your profile to get started.' : 'No posts yet.'}</p>
+          <p className="text-[14px] text-text-muted">
+            {!signedIn
+              ? 'Sign in to see posts from your friends.'
+              : friendIds.length === 0
+                ? 'No friends yet. Share your invite link from your profile to get started.'
+                : 'No posts yet.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
