@@ -91,12 +91,12 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
       onClick={toggle}
       aria-label="Like"
       aria-pressed={liked}
-      className={`press flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] transition-colors hover:bg-bg-input ${liked ? 'text-text' : 'text-text-muted'}`}
+      className={`press flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] transition-colors hover:bg-rose-500/10 hover:text-rose-500 ${liked ? 'text-rose-500' : 'text-text-muted'}`}
     >
       <Heart
         size={18}
         strokeWidth={1.75}
-        className={`transition-transform duration-300 ease-out ${liked ? 'fill-text text-text' : ''} ${pop ? 'scale-125' : 'scale-100'}`}
+        className={`transition-transform duration-300 ease-out ${liked ? 'fill-rose-500 text-rose-500' : ''} ${pop ? 'scale-125' : 'scale-100'}`}
       />
       {count > 0 ? <span className="tabular-nums">{count}</span> : null}
     </button>
