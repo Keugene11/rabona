@@ -12,6 +12,9 @@ def kp = { String key, String envVar ->
     keystoreProperties[key] ?: System.getenv(envVar)
 }
 
+def appVersionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInteger()
+def appVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0"
+
 android {
     namespace = "live.rabona.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -19,8 +22,8 @@ android {
         applicationId "live.rabona.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInteger()
-        versionName (System.getenv("ANDROID_VERSION_NAME") ?: "1.0")
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
