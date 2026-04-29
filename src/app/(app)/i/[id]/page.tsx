@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Profile, WallPost } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
@@ -99,10 +98,6 @@ export default async function InvitePreviewPage({
           ))}
         </div>
       )}
-
-      <p className="text-[12px] text-text-muted mt-6 text-center">
-        <Link href="/about" className="text-accent press">Learn more about Rabona</Link>
-      </p>
     </div>
   )
 }

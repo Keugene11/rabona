@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useGoogleLogin } from '@react-oauth/google'
 import { Capacitor } from '@capacitor/core'
-import Link from 'next/link'
 
 export default function LoginPage() {
   const [error, setError] = useState('')
@@ -251,10 +250,6 @@ export default function LoginPage() {
             </button>
           </form>
         )}
-
-        <p className="text-[12px] text-text-muted mt-4">
-          <Link href="/about" className="text-accent press">Learn more</Link>
-        </p>
       </div>
     </div>
   )
