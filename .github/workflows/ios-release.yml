@@ -1,0 +1,165 @@
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#
+#   APPLE_TEAM_ID                          — Apple Developer Team ID (e.g. SDA728W6D9)
+#   APP_STORE_CONNECT_API_KEY_ID           — ASC API key ID (e.g. B53WPHJTLN)
+#   APP_STORE_CONNECT_API_ISSUER_ID        — ASC API issuer ID (UUID)
+#   APP_STORE_CONNECT_API_KEY_BASE64       — base64 of the .p8 ASC API key file
+#                                              (Mac: `base64 -i AuthKey_XXXX.p8`
+#                                               Win: `certutil -encode AuthKey_XXXX.p8 key.b64`,
+#                                                    then strip the BEGIN/END lines)
+#   IOS_DIST_CERT_P12_BASE64               — base64 of your Apple Distribution .p12
+#   IOS_DIST_CERT_P12_PASSWORD             — password used when exporting the .p12
+#
+# One-time Apple Developer setup:
+#   1. App ID: register `live.rabona.app` at developer.apple.com → Identifiers.
+#      Enable capability "Sign in with Apple" if you plan to ship that natively.
+#   2. App Store Connect: create a new app with the same bundle ID, primary
+#      language English, and the SKU of your choice.
+#   3. Distribution cert (Windows-friendly path):
+#      a. `openssl genrsa -out ios_dist.key 2048`
+#      b. `openssl req -new -key ios_dist.key -out ios_dist.csr -subj "/emailAddress=YOU@example.com/CN=Apple Distribution/C=US"`
+#      c. Upload ios_dist.csr at developer.apple.com → Certificates → "+" → Apple Distribution.
+#      d. Download the resulting .cer.
+#      e. `openssl x509 -in distribution.cer -inform DER -out distribution.pem -outform PEM`
+#      f. `openssl pkcs12 -export -inkey ios_dist.key -in distribution.pem -out ios_dist.p12`
+#         (set a password — that's IOS_DIST_CERT_P12_PASSWORD)
+#      g. `certutil -encode ios_dist.p12 ios_dist.b64`, strip BEGIN/END lines —
+#         that's IOS_DIST_CERT_P12_BASE64.
+#
+# Trigger: Actions tab → "iOS Release" → Run workflow.
+# The build will appear in TestFlight under My Apps → TestFlight → iOS Builds.
+
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: 'CFBundleShortVersionString (e.g. 1.0.0). Leave empty to keep current.'
+        required: false
+        default: ''
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    name: Build, sign, and upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync Capacitor (iOS)
+        run: pnpm exec cap sync ios
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Stamp build number from GitHub run number
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist || true
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" ios/App/App.xcodeproj/project.pbxproj
+          echo "Build number set to $BUILD_NUMBER"
+
+      - name: Set marketing version (optional)
+        if: ${{ inputs.marketing_version != '' }}
+        run: |
+          MV="${{ inputs.marketing_version }}"
+          sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $MV;/g" ios/App/App.xcodeproj/project.pbxproj
+          echo "Marketing version set to $MV"
+
+      - name: Import distribution certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          echo "$ASC_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            archive | tee "$RUNNER_TEMP/archive.log"
+
+      - name: Write ExportOptions.plist
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>${APPLE_TEAM_ID}</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Export & upload to App Store Connect
+        run: |
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload archive logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-log
+          path: ${{ runner.temp }}/archive.log
+          if-no-files-found: ignore
