@@ -128,5 +128,10 @@ jobs:
           packageName: live.rabona.app
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: ${{ inputs.track }}
-          status: completed
+          # Upload as draft. Required while the app is still in "draft" state
+          # (i.e. before the Main Store Listing + Data Safety + content rating
+          # are filled in). Once the app graduates out of draft, the user
+          # promotes the draft release to live in Play Console (or we change
+          # this back to "completed" for auto-rollout).
+          status: draft
           inAppUpdatePriority: 0
