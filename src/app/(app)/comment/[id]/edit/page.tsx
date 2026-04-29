@@ -45,7 +45,7 @@ export default function EditCommentPage({ params }: { params: Promise<{ id: stri
   async function load() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      router.replace('/login')
+      router.replace('/feed?signin=1')
       return
     }
     const { data } = await supabase

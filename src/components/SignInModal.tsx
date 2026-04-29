@@ -20,20 +20,52 @@ export function useSignIn(): SignInContextValue {
 
 export function SignInProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [initialError, setInitialError] = useState('')
 
-  const open = useCallback(() => setIsOpen(true), [])
-  const close = useCallback(() => setIsOpen(false), [])
+  const open = useCallback(() => {
+    setInitialError('')
+    setIsOpen(true)
+  }, [])
+  const close = useCallback(() => {
+    setIsOpen(false)
+    setInitialError('')
+    // Strip signin/error params from the URL so closing doesn't leave the
+    // modal poised to reopen on refresh.
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      let dirty = false
+      for (const k of ['signin', 'error', 'returnTo']) {
+        if (url.searchParams.has(k)) { url.searchParams.delete(k); dirty = true }
+      }
+      if (dirty) {
+        const qs = url.searchParams.toString()
+        window.history.replaceState(null, '', url.pathname + (qs ? '?' + qs : '') + url.hash)
+      }
+    }
+  }, [])
+
+  // Auto-open the modal when the URL says ?signin=1 (e.g. after the
+  // middleware redirected an auth-required visit, or after an external link
+  // pointed at /feed?signin=1). Any ?error=... rides along into the modal.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('signin') === '1') {
+      setInitialError(params.get('error') || '')
+      setIsOpen(true)
+    }
+  }, [])
 
   return (
     <SignInContext.Provider value={{ open, close }}>
       {children}
-      {isOpen && <SignInModal onClose={close} />}
+      {isOpen && <SignInModal onClose={close} initialError={initialError} />}
     </SignInContext.Provider>
   )
 }
 
-function SignInModal({ onClose }: { onClose: () => void }) {
-  const [error, setError] = useState('')
+function SignInModal({ onClose, initialError = '' }: { onClose: () => void; initialError?: string }) {
+  const [error, setError] = useState(initialError)
   const [loading, setLoading] = useState(false)
   const [showEmail, setShowEmail] = useState(false)
   const [email, setEmail] = useState('')
@@ -61,10 +93,19 @@ function SignInModal({ onClose }: { onClose: () => void }) {
     })()
   }, [isNative])
 
-  // After any auth flow succeeds we hard-nav to /feed so cookies are picked
-  // up by middleware and any pending post stashed pre-login is submitted.
+  // After any auth flow succeeds we hard-nav so cookies are picked up by
+  // middleware and any pending post stashed pre-login is submitted. If the
+  // modal opened because the middleware redirected us off an auth-required
+  // page, ?returnTo points back at that page — honor it.
   function completeAuth(redirectTo: string | undefined) {
-    window.location.href = redirectTo || '/feed'
+    let target = redirectTo || '/feed'
+    if (typeof window !== 'undefined') {
+      const returnTo = new URLSearchParams(window.location.search).get('returnTo')
+      if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')) {
+        target = returnTo
+      }
+    }
+    window.location.href = target
   }
 
   const webGoogleLogin = useGoogleLogin({

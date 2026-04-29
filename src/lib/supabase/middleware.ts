@@ -66,32 +66,47 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // If not logged in and visiting an auth-required page, redirect to login
-    // (preserving where they were trying to go so we can return them).
-    if (!user && requiresAuth(request.nextUrl.pathname)) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('returnTo', request.nextUrl.pathname + request.nextUrl.search)
-      return NextResponse.redirect(url)
-    }
-
-    // If logged in and on auth pages, redirect to feed
+    // /login and /signup no longer exist as standalone pages — sign-in is
+    // always inline via the SignInModal. Bounce these URLs to /feed and
+    // (for signed-out visitors) auto-open the modal via ?signin=1, carrying
+    // through any error/from params from the legacy callers.
     if (
-      user &&
-      (request.nextUrl.pathname.startsWith('/login') ||
-        request.nextUrl.pathname.startsWith('/signup'))
+      request.nextUrl.pathname === '/login' ||
+      request.nextUrl.pathname === '/signup' ||
+      request.nextUrl.pathname.startsWith('/login/') ||
+      request.nextUrl.pathname.startsWith('/signup/')
     ) {
       const url = request.nextUrl.clone()
       url.pathname = '/feed'
+      const errorParam = request.nextUrl.searchParams.get('error')
+      const fromParam = request.nextUrl.searchParams.get('from')
+      url.search = ''
+      if (!user) url.searchParams.set('signin', '1')
+      if (errorParam) url.searchParams.set('error', errorParam)
+      if (fromParam) url.searchParams.set('from', fromParam)
+      return NextResponse.redirect(url)
+    }
+
+    // If not logged in and visiting an auth-required page, send them to /feed
+    // with the sign-in modal pre-opened (and remember where they were headed).
+    if (!user && requiresAuth(request.nextUrl.pathname)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/feed'
+      url.search = ''
+      url.searchParams.set('signin', '1')
+      url.searchParams.set('returnTo', request.nextUrl.pathname + request.nextUrl.search)
       return NextResponse.redirect(url)
     }
   } catch (err) {
     console.error('Middleware auth error, clearing cookies:', err)
-    // Stale or malformed auth cookie — wipe it and only kick to login if
-    // the route actually needs auth. Public pages should keep working.
+    // Stale or malformed auth cookie — wipe it and only kick to feed (with
+    // the sign-in modal) if the route actually needs auth. Public pages
+    // should keep working.
     if (requiresAuth(request.nextUrl.pathname)) {
       const url = request.nextUrl.clone()
-      url.pathname = '/login'
+      url.pathname = '/feed'
+      url.search = ''
+      url.searchParams.set('signin', '1')
       const redirectResponse = NextResponse.redirect(url)
       clearAuthCookies(request, redirectResponse)
       return redirectResponse

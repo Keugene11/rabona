@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Heart } from 'lucide-react'
 import { notifyFriends } from '@/lib/notifyFriends'
+import { useSignIn } from '@/components/SignInModal'
 
 interface LikesProps {
   postType: string
@@ -14,18 +15,24 @@ interface LikesProps {
 
 export default function Likes({ postType, postId, userId, authorId }: LikesProps) {
   const supabase = createClient()
+  const { open: openSignIn } = useSignIn()
   const [liked, setLiked] = useState(false)
   const [count, setCount] = useState(0)
   const [pop, setPop] = useState(false)
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!userId) return
+    // Show the public like count to everyone — signed-out visitors see it
+    // too, they just can't flip the heart without signing in first.
     supabase.from('post_likes')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('post_type', postType)
       .eq('post_id', postId)
       .then(({ count: c }) => setCount(c || 0))
+    if (!userId) {
+      setLiked(false)
+      return
+    }
     supabase.from('post_likes')
       .select('id')
       .eq('post_type', postType)
@@ -38,7 +45,10 @@ export default function Likes({ postType, postId, userId, authorId }: LikesProps
 
   async function toggle(e: React.MouseEvent) {
     e.stopPropagation()
-    if (!userId) return
+    if (!userId) {
+      openSignIn()
+      return
+    }
     if (!liked) {
       setPop(true)
       if (popTimer.current) clearTimeout(popTimer.current)

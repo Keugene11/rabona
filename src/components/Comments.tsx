@@ -11,6 +11,7 @@ import { notifyFriends } from '@/lib/notifyFriends'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import { useMentionAutocomplete, MentionDropdown, notifyMentions } from '@/components/MentionAutocomplete'
 import MentionText from '@/components/MentionText'
+import { useSignIn } from '@/components/SignInModal'
 
 function isVideoUrl(url: string) {
   return /\.(mp4|webm|mov|avi)$/i.test(url)
@@ -25,6 +26,7 @@ interface CommentsProps {
 
 export default function Comments({ postType, postId, postAuthorId, canComment = true }: CommentsProps) {
   const supabase = createClient()
+  const { open: openSignIn } = useSignIn()
   const [comments, setComments] = useState<Comment[]>([])
   const [input, setInput] = useState('')
   const [posting, setPosting] = useState(false)
@@ -103,6 +105,10 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
   }
 
   function openComposer(parent: Comment | null = null) {
+    if (!userId) {
+      openSignIn()
+      return
+    }
     setComposerParent(parent)
     setComposerOpen(true)
   }
@@ -127,7 +133,11 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
 
   async function handleInlinePost() {
     const text = input.trim()
-    if ((!text && !mediaFile) || !userId || posting) return
+    if ((!text && !mediaFile) || posting) return
+    if (!userId) {
+      openSignIn()
+      return
+    }
     setPosting(true)
 
     let media_url: string | null = null
@@ -197,6 +207,10 @@ export default function Comments({ postType, postId, postAuthorId, canComment = 
   }
 
   async function toggleLikeComment(commentId: string) {
+    if (!userId) {
+      openSignIn()
+      return
+    }
     if (likedComments.has(commentId)) {
       await supabase.from('comment_likes').delete()
         .eq('comment_id', commentId)

@@ -28,7 +28,9 @@ export default function WallPostItem({ post, currentUserId, wallOwnerId, onDelet
   const router = useRouter()
   const canDelete = currentUserId === post.author_id || currentUserId === wallOwnerId
   const canEdit = currentUserId === post.author_id
-  const canComment = !!currentUserId
+  // Always render the comment input — signed-out users tapping it pop the
+  // sign-in modal from inside Comments.
+  const canComment = true
   const content = post.content
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

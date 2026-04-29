@@ -28,7 +28,7 @@ export async function GET(
     .maybeSingle()
 
   if (!profile?.id) {
-    return NextResponse.redirect(`${origin}/login?error=Invite link is invalid`)
+    return NextResponse.redirect(`${origin}/feed?error=Invite+link+is+invalid`)
   }
 
   const displayName = (profile.full_name || profile.username || '').split(' ')[0] || 'a friend'

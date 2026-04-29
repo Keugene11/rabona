@@ -43,7 +43,7 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
   async function load() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      router.replace('/login')
+      router.replace('/feed?signin=1')
       return
     }
     const { data } = await supabase

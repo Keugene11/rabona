@@ -123,7 +123,7 @@ export default function AboutPage() {
       </section>
 
       <div className="text-center pt-4 border-t border-border">
-        <Link href="/login" className="text-accent text-[14px] font-semibold press">
+        <Link href="/feed?signin=1" className="text-accent text-[14px] font-semibold press">
           Join Rabona
         </Link>
       </div>
