@@ -33,7 +33,9 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const REVIEWER_EMAIL = 'keugenelee11+appreview@gmail.com';
+// Must match REVIEWER_EMAIL in src/lib/constants.ts — that constant gates the
+// /api/auth/login endpoint to this address only.
+const REVIEWER_EMAIL = 'reviewer@rabona.app';
 const FULL_NAME = 'App Reviewer';
 const USERNAME = 'appreviewer';
 // Strong random password — base64url, 18 bytes → 24 chars, no Apple-disallowed
@@ -41,24 +43,42 @@ const USERNAME = 'appreviewer';
 const PASSWORD = crypto.randomBytes(18).toString('base64').replace(/[+/=]/g, '');
 
 async function ensureUser() {
-  console.log(`Looking up existing user with email ${REVIEWER_EMAIL}...`);
-  // Admin listUsers is paginated; we filter client-side. The default page size
-  // is fine since we expect very few users with this email.
   const { data: list, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 200 });
   if (listErr) throw listErr;
-  const existing = list.users.find((u) => u.email?.toLowerCase() === REVIEWER_EMAIL.toLowerCase());
 
-  if (existing) {
-    console.log(`  found (id=${existing.id}). Resetting password...`);
-    const { error } = await supabase.auth.admin.updateUserById(existing.id, {
+  // Pass 1: delete the old alias account (keugenelee11+appreview) and any
+  // half-created reviewer account whose profile is missing or malformed.
+  // Frees up the "appreviewer" username if it's held by an obsolete row.
+  for (const u of list.users) {
+    const isOldAlias = u.email?.toLowerCase() === 'keugenelee11+appreview@gmail.com';
+    const isReviewer = u.email?.toLowerCase() === REVIEWER_EMAIL.toLowerCase();
+    if (!isOldAlias && !isReviewer) continue;
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', u.id)
+      .maybeSingle();
+    const broken = !prof || !prof.username;
+    if (isOldAlias || broken) {
+      console.log(`  deleting auth user ${u.id} (${u.email}, ${broken ? 'broken profile' : 'old alias'})`);
+      await supabase.auth.admin.deleteUser(u.id);
+    }
+  }
+
+  // Pass 2: re-list (after deletes) and find/create the reviewer cleanly.
+  const { data: list2 } = await supabase.auth.admin.listUsers({ perPage: 200 });
+  const reviewer = list2.users.find((u) => u.email?.toLowerCase() === REVIEWER_EMAIL.toLowerCase());
+  if (reviewer) {
+    console.log(`  reviewer survived tear-down (id=${reviewer.id}); resetting password`);
+    const { error } = await supabase.auth.admin.updateUserById(reviewer.id, {
       password: PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
-    return existing.id;
+    return reviewer.id;
   }
 
-  console.log('  not found. Creating new user (email_confirm=true)...');
+  console.log('Creating reviewer user (email_confirm=true)...');
   const { data, error } = await supabase.auth.admin.createUser({
     email: REVIEWER_EMAIL,
     password: PASSWORD,
