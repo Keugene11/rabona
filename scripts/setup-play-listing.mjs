@@ -26,8 +26,9 @@ const assetsDir = path.join(projectRoot, '.signing', 'play-listing');
 const sa = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
 
 const TITLE = 'Rabona';
+// Play Store hard-caps shortDescription at 80 characters.
 const SHORT_DESCRIPTION =
-  'A social network for the people who miss the old days — friends, walls, photos, pokes.';
+  'Inspired by early Facebook: friends, walls, photos, messages, and pokes.';
 const FULL_DESCRIPTION = `Rabona is a social network — open to anyone, inspired by early Facebook.
 
 Write short updates and posts your friends can read, like, and comment on. Send friend requests, build your circle, and message anyone privately. Every profile has a wall where friends can post photos, videos, and notes.
