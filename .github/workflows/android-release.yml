@@ -1,0 +1,130 @@
+# Required GitHub repo secrets:
+#
+#   ANDROID_KEYSTORE_BASE64                 — base64 of .signing/rabona-release.keystore
+#   ANDROID_KEYSTORE_PASSWORD               — password used when packaging the .keystore
+#   ANDROID_KEY_ALIAS                       — "rabona"
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON        — full JSON of the Play Developer service account key
+#
+# One-time Play Console setup:
+#   1. Create the app at https://play.google.com/console → Create app:
+#      - App name: Rabona
+#      - Default language: English (United States)
+#      - App or game: App
+#      - Free or paid: Free
+#   2. Grant the service account API access:
+#      Setup → API access → Link the GCP project → Grant access to the
+#      service account from voicenote-pro-484818, with permissions:
+#        - View app information (read-only)
+#        - Manage production releases / testing tracks
+#        - Manage store presence
+#
+# Trigger: Actions tab → "Android Release" → Run workflow.
+# First run uploads to the Internal Testing track. Promote to Production
+# once you've smoke-tested on a real device.
+
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play track (internal/alpha/beta/production)'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      version_name:
+        description: 'versionName (e.g. 1.0.0). Leave empty to keep current.'
+        required: false
+        default: ''
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    name: Build, sign, and upload to Play
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: ${{ inputs.version_name || '1.0' }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor (Android)
+        run: pnpm exec cap sync android
+
+      - name: Generate icons & splash from resources/
+        run: pnpm exec capacitor-assets generate --android --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000' --splashBackgroundColor '#000000' --splashBackgroundColorDark '#000000' || echo "icon generation failed, continuing with defaults"
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore/rabona-release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/keystore/rabona-release.keystore" >> "$GITHUB_ENV"
+
+      - name: Build AAB (release)
+        working-directory: android
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Show build outputs
+        run: ls -la android/app/build/outputs/bundle/release/
+
+      - name: Upload AAB as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Write Play service account JSON
+        env:
+          PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/play"
+          echo "$PLAY_JSON" > "$RUNNER_TEMP/play/service-account.json"
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play/service-account.json
+          packageName: live.rabona.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track }}
+          status: completed
+          inAppUpdatePriority: 0
