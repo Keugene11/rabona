@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, Home, School, Cake, Heart, Globe, Mail, Phone, Users, Pencil } from 'lucide-react'
+import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, Home, School, Cake, Heart, Globe, Mail, Users, Pencil } from 'lucide-react'
 import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
@@ -14,7 +14,7 @@ interface FieldConfig {
   field: string
   label: string
   icon: IconType
-  type?: 'text' | 'date' | 'tel' | 'select' | 'birthday'
+  type?: 'text' | 'date' | 'select' | 'birthday'
   options?: string[]
   searchable?: boolean
 }
@@ -33,7 +33,6 @@ function buildPrivacyFields(): FieldConfig[] {
     { field: 'interested_in', label: 'Interested In', icon: Heart, type: 'select', options: INTERESTED_IN },
     { field: 'looking_for', label: 'Looking For', icon: Heart, type: 'select', options: LOOKING_FOR },
     { field: 'political_views', label: 'Political Views', icon: Globe, type: 'select', options: POLITICAL_VIEWS },
-    { field: 'phone', label: 'Phone', icon: Phone, type: 'tel' },
     { field: 'websites', label: 'Website', icon: Globe },
   ]
 }
@@ -60,7 +59,7 @@ export default function PrivacySettingsPage() {
       if (data) {
         const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: user.id })
         const contactRow = Array.isArray(contact) ? contact[0] : contact
-        setProfile({ ...data, email: contactRow?.email ?? user.email ?? '', phone: contactRow?.phone ?? '' })
+        setProfile({ ...data, email: contactRow?.email ?? user.email ?? '' })
         if (data.private_fields) {
           setPrivateFields(data.private_fields.split(',').filter(Boolean))
         }
@@ -221,7 +220,7 @@ export default function PrivacySettingsPage() {
                   ) : (
                     <div className="flex gap-2 relative z-20">
                       <input
-                        type={type === 'tel' ? 'tel' : 'text'}
+                        type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') saveField(field, editValue) }}

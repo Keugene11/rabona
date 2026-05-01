@@ -35,7 +35,7 @@ export default function ProfilePage() {
     if (data) {
       const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: user.id })
       const contactRow = Array.isArray(contact) ? contact[0] : contact
-      setProfile({ ...data, email: contactRow?.email ?? user.email ?? '', phone: contactRow?.phone ?? '' })
+      setProfile({ ...data, email: contactRow?.email ?? user.email ?? '' })
       setAvatarUrl(data.avatar_url || '')
       const { data: meta } = await supabase.from('profiles').select('username_changed_at').eq('id', user.id).maybeSingle()
       setUsernameChangedAt(meta?.username_changed_at ?? null)
@@ -48,7 +48,7 @@ export default function ProfilePage() {
     'full_name', 'about_me', 'major', 'university',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
     'relationship_status', 'interested_in', 'looking_for', 'political_views',
-    'email', 'phone', 'websites', 'interests', 'favorite_music', 'favorite_movies',
+    'email', 'websites', 'interests', 'favorite_music', 'favorite_movies',
     'favorite_quotes',
   ])
 
@@ -181,10 +181,6 @@ export default function ProfilePage() {
             <div>
               <label className={labelClass}>Email</label>
               <input type="email" value={profile.email || ''} onChange={(e) => updateField('email', e.target.value)} className={inputClass} placeholder="Your email address" />
-            </div>
-            <div>
-              <label className={labelClass}>Phone</label>
-              <input type="tel" value={profile.phone || ''} onChange={(e) => updateField('phone', e.target.value)} className={inputClass} placeholder="Phone number" />
             </div>
             <div>
               <label className={labelClass}>Websites</label>

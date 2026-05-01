@@ -35,7 +35,7 @@ export default function ProfilePage() {
     if (data) {
       const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: user.id })
       const contactRow = Array.isArray(contact) ? contact[0] : contact
-      setProfile({ ...data, email: contactRow?.email ?? user.email ?? '', phone: contactRow?.phone ?? '' })
+      setProfile({ ...data, email: contactRow?.email ?? user.email ?? '' })
     }
     const { data: posts } = await supabase.from('wall_posts').select(`*, author:profiles!wall_posts_author_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).eq('wall_owner_id', user.id).order('created_at', { ascending: false }).limit(50)
     if (posts) setWallPosts(posts as WallPost[])

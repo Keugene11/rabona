@@ -1,6 +1,6 @@
 // Column list for PostgREST SELECTs on the `profiles` table.
-// Excludes email and phone, which are revoked at the column level and must be
-// fetched via the `get_profile_contact` RPC (respects private_fields server-side).
+// Excludes email, which is revoked at the column level and must be fetched
+// via the `get_profile_contact` RPC (respects private_fields server-side).
 export const PROFILE_PUBLIC_COLUMNS =
   'id, full_name, username, avatar_url, class_year, age, major, ' +
   'gender, relationship_status, interests, about_me, ' +

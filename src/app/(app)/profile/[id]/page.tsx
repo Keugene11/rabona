@@ -62,10 +62,10 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
           return
         }
       }
-      // Fetch email/phone via RPC (respects private_fields)
+      // Fetch email via RPC (respects private_fields)
       const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: id })
       const contactRow = Array.isArray(contact) ? contact[0] : contact
-      setProfile({ ...profileData, email: contactRow?.email ?? '', phone: contactRow?.phone ?? '' })
+      setProfile({ ...profileData, email: contactRow?.email ?? '' })
     }
 
     // Check if current user is friends with this profile (accepted friendship in either direction)
