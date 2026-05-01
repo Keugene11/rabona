@@ -56,12 +56,9 @@ export function useMentionAutocomplete({ value, setValue, inputRef, onSelect }: 
     async function search(q: string) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: me } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-      if (!me) return
       let query = supabase
         .from('profiles')
         .select('id, full_name, username, avatar_url')
-        .eq('university', me.university)
         .eq('hidden_from_directory', false)
         .neq('id', user.id)
         .order('username', { ascending: true })

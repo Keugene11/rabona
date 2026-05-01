@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-[18px] font-bold mb-2">1. Information We Collect</h2>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          When you sign in with Google, we receive your name, email address, and profile picture. You may also provide additional information such as your major, class year, dorm, clubs, and hometown. We collect content you post, including wall posts, comments, messages, and uploaded photos and videos.
+          When you sign in with Google or Apple, we receive your name, email address, and profile picture. You can also choose a username and a short bio. We collect content you post, including wall posts, comments, messages, and uploaded photos and videos.
         </p>
       </section>
 

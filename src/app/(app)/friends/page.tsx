@@ -179,9 +179,9 @@ export default function FriendsPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold truncate">{u.full_name}</p>
-            <p className="text-[12px] text-text-muted truncate">
-              {u.major}{u.class_year ? ` '${u.class_year.toString().slice(-2)}` : ''}
-            </p>
+            {u.username && (
+              <p className="text-[12px] text-text-muted truncate">@{u.username}</p>
+            )}
             {u.last_seen && (
               <p className={`text-[11px] flex items-center gap-1 ${online ? 'text-text font-medium' : 'text-text-muted'}`}>
                 <Circle size={6} className={online ? 'fill-text text-text' : 'fill-text-muted/40 text-text-muted/40'} />
@@ -321,9 +321,9 @@ export default function FriendsPage() {
                   <Link href={`/profile/${r.profile.id}`} className="press">
                     <p className="text-[14px] font-semibold truncate hover:underline">{r.profile.full_name}</p>
                   </Link>
-                  <p className="text-[12px] text-text-muted truncate">
-                    {r.profile.major}{r.profile.class_year ? ` '${r.profile.class_year.toString().slice(-2)}` : ''}
-                  </p>
+                  {r.profile.username && (
+                    <p className="text-[12px] text-text-muted truncate">@{r.profile.username}</p>
+                  )}
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button

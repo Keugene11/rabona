@@ -30,7 +30,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
   const [reportDetails, setReportDetails] = useState('')
   const [activeTab, setActiveTab] = useState<'wall' | 'info'>('wall')
   const [reportSent, setReportSent] = useState(false)
-  const [notInNetwork, setNotInNetwork] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -53,16 +52,7 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
         setLoading(false)
         return
       }
-      // Check if same university
-      if (user) {
-        const { data: myProfile } = await supabase.from('profiles').select('university').eq('id', user.id).single()
-        if (myProfile && profileData.university && myProfile.university !== profileData.university) {
-          setNotInNetwork(true)
-          setLoading(false)
-          return
-        }
-      }
-      // Fetch email via RPC (respects private_fields)
+      // Fetch email via RPC.
       const { data: contact } = await supabase.rpc('get_profile_contact', { p_profile_id: id })
       const contactRow = Array.isArray(contact) ? contact[0] : contact
       setProfile({ ...profileData, email: contactRow?.email ?? '' })
@@ -171,14 +161,6 @@ export default function ProfileViewPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-text-muted" size={24} />
-      </div>
-    )
-  }
-
-  if (notInNetwork) {
-    return (
-      <div className="max-w-xl mx-auto px-4 pt-6 text-center">
-        <p className="text-text-muted">This user is not in your school&apos;s network.</p>
       </div>
     )
   }

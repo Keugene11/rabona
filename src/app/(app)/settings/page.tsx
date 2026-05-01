@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Lock, Trash2, Loader2, Mail, Info, Bell, Moon, Sun, LogOut } from 'lucide-react'
+import { ArrowLeft, Trash2, Loader2, Mail, Info, Bell, Moon, Sun, LogOut } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 
 export default function SettingsPage() {
@@ -65,13 +65,6 @@ export default function SettingsPage() {
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${dark ? 'left-5' : 'left-1'}`} />
           </div>
         </button>
-        <Link href="/settings/privacy" className="press flex items-center gap-3 px-4 py-3.5">
-          <Lock size={16} className="text-text-muted" />
-          <div className="flex-1">
-            <p className="text-[14px] font-medium">Privacy</p>
-            <p className="text-[12px] text-text-muted">Control which fields others can see</p>
-          </div>
-        </Link>
         <Link href="/settings/notifications" className="press flex items-center gap-3 px-4 py-3.5">
           <Bell size={16} className="text-text-muted" />
           <div className="flex-1">

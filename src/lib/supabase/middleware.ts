@@ -7,7 +7,6 @@ const AUTH_REQUIRED_EXACT = new Set([
   '/profile',
 ])
 const AUTH_REQUIRED_PREFIXES = [
-  '/profile/edit',
   '/settings',
   '/friends',
   '/messages',

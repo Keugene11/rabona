@@ -4,23 +4,9 @@ export interface Profile {
   full_name: string
   username: string
   avatar_url: string | null
-  class_year: number | null
-  age: number | null
-  major: string
-  gender: string
-  interests: string
   about_me: string
-  favorite_music: string
-  favorite_movies: string
-  favorite_quotes: string
-  hometown: string
-  high_school: string
-  websites: string
-  birthday: string
-  university: string
   onboarding_complete: boolean
   hidden_from_directory: boolean
-  private_fields: string
   last_seen: string | null
   notif_friend_requests: boolean
   notif_pokes: boolean
