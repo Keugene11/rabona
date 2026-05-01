@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Camera, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
+import { CLASS_YEARS, GENDERS } from '@/lib/constants'
 import AvatarCropper from '@/components/AvatarCropper'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
@@ -47,7 +47,6 @@ export default function ProfilePage() {
   const SAFE_FIELDS = new Set([
     'full_name', 'about_me', 'major', 'university',
     'hometown', 'high_school', 'birthday', 'class_year', 'gender',
-    'relationship_status', 'interested_in', 'looking_for', 'political_views',
     'email', 'websites', 'interests', 'favorite_music', 'favorite_movies',
     'favorite_quotes',
   ])
@@ -204,38 +203,6 @@ export default function ProfilePage() {
           {/* Personal */}
           <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-3">
             <p className="text-[13px] font-semibold">Personal</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={labelClass}>Relationship</label>
-                <select value={profile.relationship_status || ''} onChange={(e) => updateField('relationship_status', e.target.value)} className={selectClass}>
-                  <option value="">Select</option>
-                  {RELATIONSHIP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Interested In</label>
-                <select value={profile.interested_in || ''} onChange={(e) => updateField('interested_in', e.target.value)} className={selectClass}>
-                  <option value="">Select</option>
-                  {INTERESTED_IN.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={labelClass}>Looking For</label>
-                <select value={profile.looking_for || ''} onChange={(e) => updateField('looking_for', e.target.value)} className={selectClass}>
-                  <option value="">Select</option>
-                  {LOOKING_FOR.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Political Views</label>
-                <select value={profile.political_views || ''} onChange={(e) => updateField('political_views', e.target.value)} className={selectClass}>
-                  <option value="">Select</option>
-                  {POLITICAL_VIEWS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-            </div>
             <div>
               <label className={labelClass}>About Me</label>
               <textarea value={profile.about_me || ''} onChange={(e) => updateField('about_me', e.target.value)} className={`${inputClass} resize-none h-16`} placeholder="Tell people about yourself..." />

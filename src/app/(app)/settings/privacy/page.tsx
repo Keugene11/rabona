@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, Home, School, Cake, Heart, Globe, Mail, Users, Pencil } from 'lucide-react'
-import { CLASS_YEARS, GENDERS, RELATIONSHIP_STATUSES, LOOKING_FOR, INTERESTED_IN, POLITICAL_VIEWS } from '@/lib/constants'
+import { Loader2, ArrowLeft, Lock, Unlock, GraduationCap, Home, School, Cake, Globe, Mail, Users, Pencil } from 'lucide-react'
+import { CLASS_YEARS, GENDERS } from '@/lib/constants'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 
@@ -29,10 +29,6 @@ function buildPrivacyFields(): FieldConfig[] {
     { field: 'birthday', label: 'Birthday', icon: Cake, type: 'birthday' },
     { field: 'class_year', label: 'Class Year', icon: GraduationCap, type: 'select', options: CLASS_YEARS.map(String) },
     { field: 'gender', label: 'Gender', icon: GraduationCap, type: 'select', options: GENDERS },
-    { field: 'relationship_status', label: 'Relationship Status', icon: Heart, type: 'select', options: RELATIONSHIP_STATUSES },
-    { field: 'interested_in', label: 'Interested In', icon: Heart, type: 'select', options: INTERESTED_IN },
-    { field: 'looking_for', label: 'Looking For', icon: Heart, type: 'select', options: LOOKING_FOR },
-    { field: 'political_views', label: 'Political Views', icon: Globe, type: 'select', options: POLITICAL_VIEWS },
     { field: 'websites', label: 'Website', icon: Globe },
   ]
 }
