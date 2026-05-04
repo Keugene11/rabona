@@ -1,4 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#000"/>
-  <text x="16" y="23" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="22" fill="#fff">R</text>
+  <rect width="32" height="32" rx="7" ry="7" fill="#000000"/>
+  <g fill="#ffffff">
+    <!-- left bracket -->
+    <rect x="6.656" y="8.64" width="1.184" height="14.72"/>
+    <rect x="6.656" y="8.64" width="3.776" height="1.184"/>
+    <rect x="6.656" y="22.176" width="3.776" height="1.184"/>
+    <!-- right bracket -->
+    <rect x="24.16" y="8.64" width="1.184" height="14.72"/>
+    <rect x="21.568" y="8.64" width="3.776" height="1.184"/>
+    <rect x="21.568" y="22.176" width="3.776" height="1.184"/>
+  </g>
+  <text x="16" y="22.56" text-anchor="middle"
+        font-family="Arial Black, Arial, Helvetica, sans-serif"
+        font-weight="900" font-size="11.52" fill="#ffffff"
+        letter-spacing="-2">R</text>
 </svg>

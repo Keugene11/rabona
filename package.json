@@ -10,7 +10,7 @@
     "cap:sync": "cap sync",
     "cap:sync:ios": "cap sync ios",
     "cap:open:ios": "cap open ios",
-    "cap:assets": "capacitor-assets generate --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000' --splashBackgroundColor '#000000' --splashBackgroundColorDark '#000000'"
+    "logo": "node scripts/generate-logo.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

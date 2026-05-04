@@ -1,4 +1,17 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#1a1a1a"/>
-  <text x="100" y="340" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="260" fill="white" letter-spacing="-10">[S]</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="225" ry="225" fill="#000000"/>
+  <g fill="#ffffff">
+    <!-- left bracket -->
+    <rect x="212.992" y="276.48" width="37.888" height="471.04"/>
+    <rect x="212.992" y="276.48" width="120.832" height="37.888"/>
+    <rect x="212.992" y="709.632" width="120.832" height="37.888"/>
+    <!-- right bracket -->
+    <rect x="773.12" y="276.48" width="37.888" height="471.04"/>
+    <rect x="690.176" y="276.48" width="120.832" height="37.888"/>
+    <rect x="690.176" y="709.632" width="120.832" height="37.888"/>
+  </g>
+  <text x="512" y="721.92" text-anchor="middle"
+        font-family="Arial Black, Arial, Helvetica, sans-serif"
+        font-weight="900" font-size="368.64" fill="#ffffff"
+        letter-spacing="-2">R</text>
 </svg>
