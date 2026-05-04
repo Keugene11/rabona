@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 import type { WallPost } from '@/types'
@@ -12,6 +12,7 @@ import { readPendingPost, clearPendingPost } from '@/lib/pending-post'
 import { notifyFriends } from '@/lib/notifyFriends'
 import { notifyMentions } from '@/components/MentionAutocomplete'
 import { useSignIn } from '@/components/SignInModal'
+import { readSeen, markSeen, wasSeenLongAgo, type SeenMap } from '@/lib/seen-posts'
 
 
 export default function FeedPage() {
@@ -25,6 +26,10 @@ export default function FeedPage() {
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
   const [username, setUsername] = useState('')
+  const [seenSnapshot, setSeenSnapshot] = useState<SeenMap | null>(null)
+  // Frozen at first render so the "already seen" divider doesn't shift around
+  // as the user lingers on the page.
+  const sessionStartRef = useRef<number>(Date.now())
   const PAGE_SIZE = 20
 
   useEffect(() => {
@@ -41,6 +46,7 @@ export default function FeedPage() {
       return
     }
     setCurrentUserId(user.id)
+    setSeenSnapshot(readSeen(user.id))
 
     // If they came back from login with a draft we stashed before sign-in,
     // submit it now so the post lands on their wall.
@@ -150,6 +156,26 @@ export default function FeedPage() {
     setLoadingMore(false)
   }, [loadingMore, hasMore, posts, blockedIds, currentUserId, friendIds, supabase])
 
+  // Stamp every post that's currently on screen with the current time the
+  // first time we see it. Idempotent — already-stamped posts keep their
+  // original timestamp.
+  useEffect(() => {
+    if (!currentUserId || posts.length === 0) return
+    markSeen(currentUserId, posts.map(p => p.id))
+  }, [currentUserId, posts])
+
+  const { newPosts, oldPosts } = useMemo(() => {
+    const seen = seenSnapshot ?? {}
+    const sessionNow = sessionStartRef.current
+    const fresh: WallPost[] = []
+    const stale: WallPost[] = []
+    for (const p of posts) {
+      if (wasSeenLongAgo(seen, p.id, sessionNow)) stale.push(p)
+      else fresh.push(p)
+    }
+    return { newPosts: fresh, oldPosts: stale }
+  }, [posts, seenSnapshot])
+
   // Infinite scroll
   useEffect(() => {
     function handleScroll() {
@@ -220,7 +246,29 @@ export default function FeedPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {posts.map(post => (
+          {newPosts.map(post => (
+            <WallPostItem
+              key={post.id}
+              post={post}
+              currentUserId={currentUserId}
+              wallOwnerId={post.wall_owner_id}
+              onDelete={handleDeletePost}
+              isFriend={friendIds.includes(post.author_id)}
+              truncate
+            />
+          ))}
+
+          {newPosts.length > 0 && oldPosts.length > 0 && (
+            <div className="flex items-center gap-3 py-2">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                Already seen
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          )}
+
+          {oldPosts.map(post => (
             <WallPostItem
               key={post.id}
               post={post}
