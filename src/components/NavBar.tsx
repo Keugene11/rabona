@@ -95,11 +95,12 @@ export default function NavBar() {
   }, [pathname, signedIn])
 
   const navItems = signedIn ? navItemsSignedIn : navItemsSignedOut
+  const onFeed = pathname === '/feed'
 
   return (
     <>
-      {/* Mobile compose FAB */}
-      {signedIn ? (
+      {/* Mobile compose FAB — plus only on feed; sign-in everywhere */}
+      {signedIn && onFeed ? (
         <button
           type="button"
           onClick={() => setComposeOpen(true)}
