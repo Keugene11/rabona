@@ -2,18 +2,25 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, UserCheck, UserX, Search, UserPlus, Circle } from 'lucide-react'
+import { Loader2, UserCheck, UserX, Search, UserPlus, Circle, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { PROFILE_PUBLIC_COLUMNS } from '@/lib/profile-select'
 import InviteLinkCard from '@/components/InviteLinkCard'
 
+type FoFRow = Pick<Profile, 'id' | 'full_name' | 'username' | 'avatar_url' | 'about_me' | 'hidden_from_directory' | 'last_seen' | 'created_at'> & {
+  mutual_count: number
+}
+
 export default function FriendsPage() {
   const supabase = createClient()
-  const [tab, setTab] = useState<'friends' | 'requests'>('friends')
+  const [tab, setTab] = useState<'friends' | 'requests' | 'discover'>('friends')
   const [self, setSelf] = useState<Profile | null>(null)
   const [friends, setFriends] = useState<Profile[]>([])
   const [requests, setRequests] = useState<{ id: string; profile: Profile }[]>([])
+  const [fof, setFof] = useState<FoFRow[]>([])
+  const [fofLoading, setFofLoading] = useState(false)
+  const [fofLoaded, setFofLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState('')
   const [query, setQuery] = useState('')
@@ -25,6 +32,21 @@ export default function FriendsPage() {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (tab === 'discover' && !fofLoaded && !fofLoading) {
+      loadFriendsOfFriends()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
+
+  async function loadFriendsOfFriends() {
+    setFofLoading(true)
+    const { data } = await supabase.rpc('friends_of_friends')
+    if (data) setFof(data as FoFRow[])
+    setFofLoaded(true)
+    setFofLoading(false)
+  }
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -254,6 +276,14 @@ export default function FriendsPage() {
           Friends ({friends.length})
         </button>
         <button
+          onClick={() => setTab('discover')}
+          className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-colors press ${
+            tab === 'discover' ? 'bg-bg-card shadow-sm text-text' : 'text-text-muted'
+          }`}
+        >
+          Discover
+        </button>
+        <button
           onClick={() => setTab('requests')}
           className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-colors press ${
             tab === 'requests' ? 'bg-bg-card shadow-sm text-text' : 'text-text-muted'
@@ -295,6 +325,39 @@ export default function FriendsPage() {
             )}
           </div>
         </>
+      )}
+
+      {tab === 'discover' && (
+        <div className="space-y-2">
+          <p className="text-[12px] text-text-muted px-1 mb-1">
+            Friends of your friends — people you might know.
+          </p>
+          {fofLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="animate-spin text-text-muted" size={20} />
+            </div>
+          )}
+          {!fofLoading && fof.length === 0 && (
+            <div className="bg-bg-card border border-border rounded-2xl p-6 text-center">
+              <p className="text-text-muted text-[14px]">
+                {friends.length === 0
+                  ? 'Add some friends first — then their friends will show up here.'
+                  : 'No friends-of-friends to show yet.'}
+              </p>
+            </div>
+          )}
+          {!fofLoading && fof.map(u => (
+            <UserRow
+              key={u.id}
+              user={u as unknown as Profile}
+              trailing={
+                <span className="text-[11px] text-text-muted font-medium px-2 py-0.5 rounded-full bg-bg-input flex items-center gap-1 whitespace-nowrap">
+                  <Users size={11} /> {u.mutual_count}
+                </span>
+              }
+            />
+          ))}
+        </div>
       )}
 
       {tab === 'requests' && (
