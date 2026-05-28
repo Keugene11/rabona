@@ -32,6 +32,21 @@ function clearAuthCookies(request: NextRequest, response: NextResponse) {
   }
 }
 
+// Hard cap on the Supabase auth call so a paused project or slow upstream
+// never burns the full middleware time budget (Vercel kills it with 504
+// MIDDLEWARE_INVOCATION_TIMEOUT, taking every page down). Throwing on
+// timeout lets the existing catch block treat the user as signed-out.
+const AUTH_TIMEOUT_MS = 2500
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('supabase auth timeout')), ms)
+    p.then(
+      v => { clearTimeout(t); resolve(v) },
+      e => { clearTimeout(t); reject(e) },
+    )
+  })
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -63,7 +78,7 @@ export async function updateSession(request: NextRequest) {
 
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS)
 
     // /login and /signup no longer exist as standalone pages — sign-in is
     // always inline via the SignInModal. Bounce these URLs to /feed and
